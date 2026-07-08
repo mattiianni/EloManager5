@@ -234,7 +234,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments }
                     <>
                         <HIGListRow
                             label={lastGiornata.name}
-                            subtitle={`${lastGiornata.type} • ${lastGiornata.date}`}
+                            subtitle={`${lastGiornata.type} • ${new Date(lastGiornata.date).toLocaleDateString('it-IT')}`}
                             icon={
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', background: 'var(--ios-systemOrange)', borderRadius: '6px' }}>
                                     <SFIcon name="trophy.fill" size={16} color="white" />
