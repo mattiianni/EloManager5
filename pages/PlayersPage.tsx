@@ -89,6 +89,10 @@ const PlayersPage: React.FC = () => {
         const nName = name.trim();
         const nSurname = surname.trim();
         if (nName && nSurname) {
+            if (nName.length < 2 || nSurname.length < 2) {
+                alert("Il nome e il cognome devono avere almeno 2 lettere.");
+                return;
+            }
             const isDuplicate = players.some(p => 
                 p.name.toLowerCase() === nName.toLowerCase() && 
                 p.surname.toLowerCase() === nSurname.toLowerCase()
@@ -119,6 +123,10 @@ const PlayersPage: React.FC = () => {
         const eName = editName.trim();
         const eSurname = editSurname.trim();
         if (playerToEdit && eName && eSurname && !isNaN(newElo)) {
+            if (eName.length < 2 || eSurname.length < 2) {
+                alert("Il nome e il cognome devono avere almeno 2 lettere.");
+                return;
+            }
             const isDuplicate = players.some(p => 
                 p.id !== playerToEdit.id &&
                 p.name.toLowerCase() === eName.toLowerCase() && 

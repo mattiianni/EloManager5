@@ -1804,6 +1804,9 @@ app.post('/api/players', async (req, res) => {
         if (!name || !surname || !position) {
             return res.status(400).json({ message: 'Missing required fields' });
         }
+        if (name.trim().length < 2 || surname.trim().length < 2) {
+            return res.status(400).json({ message: 'Nome e cognome devono avere almeno 2 caratteri' });
+        }
         
         const initialEloToSet = currentElo !== undefined ? currentElo : 1500;
 
@@ -1840,6 +1843,9 @@ app.put('/api/players', async (req, res) => {
         const { id, name, surname, position, currentElo, tournamentId } = req.body;
         if (!id || !name || !surname || !position || currentElo === undefined) {
             return res.status(400).json({ message: 'Missing required fields' });
+        }
+        if (name.trim().length < 2 || surname.trim().length < 2) {
+            return res.status(400).json({ message: 'Nome e cognome devono avere almeno 2 caratteri' });
         }
 
         const playerResult = await sql`SELECT name, surname, current_elo FROM players WHERE id = ${id} AND workspace_id = ${req.workspaceId}`;
