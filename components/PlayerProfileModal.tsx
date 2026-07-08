@@ -100,7 +100,7 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
         return { total, totalClassic: playerMatches.length, ttMatchesCount, wins, gamesWon, gamesLost, form, bestStreak, lastDelta };
     }, [player, playerMatches, eloHistory]);
 
-    // ELO chart data: same approach as RankingChart.tsx (cumulative deltas)
+    // ELO chart data: same approach as RankingChart.tsx (cumulative deltas), but grouped by DATE
     const eloChartData = useMemo(() => {
         if (!player) return [];
 
@@ -110,42 +110,38 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
 
         if (playerHistory.length === 0) return [];
 
-        // Build event dates map
-        const eventDates = new Map<string, string>();
-        tournaments.forEach(t => { eventDates.set(t.id, t.date); });
-        playerHistory.forEach(e => { if (!eventDates.has(e.eventId)) eventDates.set(e.eventId, e.date); });
-
-        // Get ordered unique event IDs
-        const orderedEventIds = [...new Set(playerHistory.map(e => e.eventId))]
-            .sort((a, b) => new Date(eventDates.get(a) || '').getTime() - new Date(eventDates.get(b) || '').getTime());
-
-        // Build per-event delta sum and first entry lookup
-        const eventFirstEntry = new Map<string, typeof playerHistory[number]>();
-        const eventDeltaSum = new Map<string, number>();
+        // Build per-date delta sum and first entry lookup
+        const dateFirstEntry = new Map<string, typeof playerHistory[number]>();
+        const dateDeltaSum = new Map<string, number>();
+        
         playerHistory.forEach(entry => {
-            if (!eventFirstEntry.has(entry.eventId)) eventFirstEntry.set(entry.eventId, entry);
-            eventDeltaSum.set(entry.eventId, (eventDeltaSum.get(entry.eventId) || 0) + entry.delta);
+            const dateStr = entry.date.split('T')[0];
+            if (!dateFirstEntry.has(dateStr)) dateFirstEntry.set(dateStr, entry);
+            dateDeltaSum.set(dateStr, (dateDeltaSum.get(dateStr) || 0) + entry.delta);
         });
 
-        // Initial base: eloBefore of first event
-        const firstEventId = orderedEventIds[0];
-        const firstEntry = eventFirstEntry.get(firstEventId);
+        // Get ordered unique dates
+        const orderedDates = [...dateFirstEntry.keys()].sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+
+        // Initial base: eloBefore of first date
+        const firstDate = orderedDates[0];
+        const firstEntry = dateFirstEntry.get(firstDate);
         const base = firstEntry ? firstEntry.eloBefore : player.initialElo;
 
         const data: { eventIndex: number; elo: number; sourceLabel?: string }[] = [];
         // Initial point
         data.push({ eventIndex: -1, elo: base, sourceLabel: 'Start' });
 
-        // Cumulative approach (same as RankingChart)
+        // Cumulative approach
         let cumulative = 0;
-        orderedEventIds.forEach((eventId, index) => {
-            const deltaForEvent = eventDeltaSum.get(eventId) || 0;
-            const firstEntryForEvent = eventFirstEntry.get(eventId);
-            cumulative += deltaForEvent;
+        orderedDates.forEach((dateStr, index) => {
+            const deltaForDate = dateDeltaSum.get(dateStr) || 0;
+            const firstEntryForDate = dateFirstEntry.get(dateStr);
+            cumulative += deltaForDate;
             data.push({ 
                 eventIndex: index, 
                 elo: base + cumulative,
-                sourceLabel: firstEntryForEvent?.sourceLabel || `Event #${index + 1}`
+                sourceLabel: firstEntryForDate?.sourceLabel || `Date ${dateStr}`
             });
         });
 

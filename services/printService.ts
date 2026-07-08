@@ -6507,27 +6507,27 @@ export const printPlayerProfiles = (
             };
         }).filter(Boolean);
 
-        // ELO chart data (cumulative)
-        const eventDates = new Map<string, string>();
-        allTournaments.forEach(t => { eventDates.set(t.id, t.date); });
-        playerHistory.forEach(e => { if (!eventDates.has(e.eventId)) eventDates.set(e.eventId, e.date); });
-        const orderedEventIds = [...new Set(playerHistory.map(e => e.eventId))]
-            .sort((a, b) => new Date(eventDates.get(a) || '').getTime() - new Date(eventDates.get(b) || '').getTime());
-        const eventDeltaSum = new Map<string, number>();
-        const eventFirstEntry = new Map<string, typeof playerHistory[number]>();
+        // ELO chart data (cumulative by DATE)
+        const dateDeltaSum = new Map<string, number>();
+        const dateFirstEntry = new Map<string, typeof playerHistory[number]>();
+        
         playerHistory.forEach(entry => {
-            if (!eventFirstEntry.has(entry.eventId)) eventFirstEntry.set(entry.eventId, entry);
-            eventDeltaSum.set(entry.eventId, (eventDeltaSum.get(entry.eventId) || 0) + entry.delta);
+            const dateStr = entry.date.split('T')[0];
+            if (!dateFirstEntry.has(dateStr)) dateFirstEntry.set(dateStr, entry);
+            dateDeltaSum.set(dateStr, (dateDeltaSum.get(dateStr) || 0) + entry.delta);
         });
-        const firstEventId = orderedEventIds[0];
-        const firstEntry = firstEventId ? eventFirstEntry.get(firstEventId) : undefined;
+        
+        const orderedDates = [...dateFirstEntry.keys()].sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+        
+        const firstDate = orderedDates[0];
+        const firstEntry = firstDate ? dateFirstEntry.get(firstDate) : undefined;
         const base = firstEntry ? firstEntry.eloBefore : player.initialElo;
         const chartPoints: { elo: number; label: string }[] = [{ elo: base, label: 'Start' }];
+        
         let cumulative = 0;
-        orderedEventIds.forEach((eventId, idx) => {
-            cumulative += eventDeltaSum.get(eventId) || 0;
-            const t = allTournaments.find(t2 => t2.id === eventId);
-            const label = t ? new Date(t.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }) : `E${idx + 1}`;
+        orderedDates.forEach((dateStr, idx) => {
+            cumulative += dateDeltaSum.get(dateStr) || 0;
+            const label = new Date(dateStr).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
             chartPoints.push({ elo: base + cumulative, label });
         });
 

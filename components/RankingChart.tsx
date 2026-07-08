@@ -78,32 +78,29 @@ const RankingChart: React.FC<RankingChartProps> = ({ theme, selectedSeriesKey })
     const chartData = useMemo(() => {
         if (selectedPlayerIds.length === 0) return [];
         
-        const seriesEventIdsOrdered: string[] | null = selectedSeriesKey
-            ? [...tournaments]
+        // If a series is selected, get its unique dates
+        const seriesDatesOrdered: string[] | null = selectedSeriesKey
+            ? [...new Set([...tournaments]
                 .filter(t => (t.giornataName || t.name) === selectedSeriesKey)
-                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                .map(t => t.id)
+                .map(t => t.date.split('T')[0]))]
+                .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
             : null;
 
-        const eventDates = new Map<string, string>();
-        tournaments.forEach(t => { eventDates.set(t.id, t.date); });
-        eloHistory.forEach(e => { if (!eventDates.has(e.eventId)) eventDates.set(e.eventId, e.date); });
-
-        let orderedEventIds: string[] = [];
-        if (seriesEventIdsOrdered && seriesEventIdsOrdered.length > 0) {
-            orderedEventIds = seriesEventIdsOrdered;
+        let orderedDates: string[] = [];
+        if (seriesDatesOrdered && seriesDatesOrdered.length > 0) {
+            orderedDates = seriesDatesOrdered;
         } else {
             const playerEvents = eloHistory.filter(e => selectedPlayerIds.includes(e.playerId));
-            const uniqueEventIds = [...new Set(playerEvents.map(e => e.eventId))];
-            orderedEventIds = uniqueEventIds.sort((a, b) => new Date(eventDates.get(a) || '').getTime() - new Date(eventDates.get(b) || '').getTime());
+            const uniqueDates = [...new Set(playerEvents.map(e => e.date.split('T')[0]))];
+            orderedDates = uniqueDates.sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
         }
         
         const data: any[] = [];
 
-        // Build fast lookup maps per player: first entry per event (for eloBefore), last entry per event (for eloAfter)
-        const perPlayerEventFirstEntry = new Map<string, Map<string, typeof eloHistory[number]>>();
-        // Also compute per-event DELTA SUM strictly within this series
-        const perPlayerEventDeltaSum = new Map<string, Map<string, number>>();
+        // Build fast lookup maps per player: first entry per date (for eloBefore)
+        const perPlayerDateFirstEntry = new Map<string, Map<string, typeof eloHistory[number]>>();
+        // Compute per-date DELTA SUM
+        const perPlayerDateDeltaSum = new Map<string, Map<string, number>>();
 
         selectedPlayerIds.forEach(playerId => {
             const historyForPlayer = eloHistory
@@ -114,20 +111,21 @@ const RankingChart: React.FC<RankingChartProps> = ({ theme, selectedSeriesKey })
             const deltaMap = new Map<string, number>();
 
             historyForPlayer.forEach(entry => {
-                if (!firstMap.has(entry.eventId)) firstMap.set(entry.eventId, entry);
-                // Accumulate delta per event
-                const prev = deltaMap.get(entry.eventId) || 0;
-                deltaMap.set(entry.eventId, prev + (entry.delta || 0));
+                const dateStr = entry.date.split('T')[0];
+                if (!firstMap.has(dateStr)) firstMap.set(dateStr, entry);
+                // Accumulate delta per date
+                const prev = deltaMap.get(dateStr) || 0;
+                deltaMap.set(dateStr, prev + (entry.delta || 0));
             });
 
-            perPlayerEventFirstEntry.set(playerId, firstMap);
-            perPlayerEventDeltaSum.set(playerId, deltaMap);
+            perPlayerDateFirstEntry.set(playerId, firstMap);
+            perPlayerDateDeltaSum.set(playerId, deltaMap);
         });
 
-        // Initial point = rating immediately BEFORE the first giornata of the selected series
+        // Initial point = rating immediately BEFORE the first date
         const initialPoint: any = { eventIndex: -1, sourceLabel: 'Start' };
-        const firstEventId = orderedEventIds[0];
-        const firstEventDate = firstEventId ? new Date(eventDates.get(firstEventId) || 0).getTime() : 0;
+        const firstDateStr = orderedDates[0];
+        const firstDateTime = firstDateStr ? new Date(firstDateStr).getTime() : 0;
 
         const playerInitialBase = new Map<string, number>();
         selectedPlayerIds.forEach(playerId => {
@@ -136,14 +134,14 @@ const RankingChart: React.FC<RankingChartProps> = ({ theme, selectedSeriesKey })
                 .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
             const priorEntry = historyForPlayer
-                .filter(e => new Date(e.date).getTime() < firstEventDate)
+                .filter(e => new Date(e.date.split('T')[0]).getTime() < firstDateTime)
                 .slice(-1)[0];
 
-            const firstEntryInEvent = perPlayerEventFirstEntry.get(playerId)?.get(firstEventId || '');
+            const firstEntryInDate = perPlayerDateFirstEntry.get(playerId)?.get(firstDateStr || '');
 
             let base: number;
-            if (firstEntryInEvent) {
-                base = firstEntryInEvent.eloBefore;
+            if (firstEntryInDate) {
+                base = firstEntryInDate.eloBefore;
             } else if (priorEntry) {
                 base = priorEntry.eloAfter;
             } else {
@@ -155,14 +153,13 @@ const RankingChart: React.FC<RankingChartProps> = ({ theme, selectedSeriesKey })
         });
         data.push(initialPoint);
 
-        // For each giornata, add the delta SUM of that giornata to the cumulative value.
-        // If a player did not play that giornata, delta=0 (carry-over).
+        // For each date, add the delta SUM of that date to the cumulative value.
         const cumulativeByPlayer = new Map<string, number>();
         selectedPlayerIds.forEach(pid => cumulativeByPlayer.set(pid, 0));
 
-        orderedEventIds.forEach((eventId, index) => {
+        orderedDates.forEach((dateStr, index) => {
             let sourceLabel = '';
-            const historyEntry = eloHistory.find(e => e.eventId === eventId);
+            const historyEntry = eloHistory.find(e => e.date.split('T')[0] === dateStr);
             if (historyEntry) {
                 sourceLabel = historyEntry.sourceLabel || '';
             }
@@ -173,9 +170,9 @@ const RankingChart: React.FC<RankingChartProps> = ({ theme, selectedSeriesKey })
             };
 
             selectedPlayerIds.forEach(playerId => {
-                const deltaMap = perPlayerEventDeltaSum.get(playerId);
-                const deltaForEvent = deltaMap ? (deltaMap.get(eventId) || 0) : 0;
-                const cum = (cumulativeByPlayer.get(playerId) || 0) + deltaForEvent;
+                const deltaMap = perPlayerDateDeltaSum.get(playerId);
+                const deltaForDate = deltaMap ? (deltaMap.get(dateStr) || 0) : 0;
+                const cum = (cumulativeByPlayer.get(playerId) || 0) + deltaForDate;
                 cumulativeByPlayer.set(playerId, cum);
                 point[playerId] = (playerInitialBase.get(playerId) || 0) + cum;
             });
