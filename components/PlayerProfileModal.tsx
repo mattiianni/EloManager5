@@ -55,7 +55,7 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
         const ttMatchesCount = playerHistory.filter(e => e.type === 'team_tournament_matchday').length;
-        const total = playerMatches.length + ttMatchesCount;
+        const total = playerMatches.length;
         
         const wins = playerMatches.filter(m => {
             const isTeam1 = m.team1.includes(player.id);
