@@ -117,6 +117,9 @@ export interface TeamTournamentConfig {
 export interface TeamTournamentPlayerEntry {
     name: string;
     surname: string;
+    id?: string;
+    currentElo?: number;
+    playtomicLevel?: number;
 }
 
 export type TeamTournamentSchedule = TeamTournamentRoundRobinSchedule;

@@ -256,33 +256,29 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments }
                         <HIGListRow
                             key={i}
                             label={
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0, fontSize: '15px' }}>
                                     <span style={{
                                         color: m.winner === 'team1' ? 'var(--ios-label)' : 'var(--ios-secondaryLabel)',
                                         fontWeight: m.winner === 'team1' ? 600 : 400,
-                                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1
+                                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
                                     }}>{m.t1}</span>
-                                    <span style={{ color: 'var(--ios-tertiaryLabel)', flexShrink: 0, fontSize: '12px' }}>vs</span>
                                     <span style={{
                                         color: m.winner === 'team2' ? 'var(--ios-label)' : 'var(--ios-secondaryLabel)',
                                         fontWeight: m.winner === 'team2' ? 600 : 400,
-                                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, textAlign: 'right'
+                                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
                                     }}>{m.t2}</span>
                                 </div>
                             }
                             subtitle={m.date}
                             detail={
-                                <span style={{
-                                    fontFamily: 'monospace',
-                                    fontWeight: 700,
-                                    fontSize: '14px',
-                                    color: 'var(--ios-systemGreen)',
-                                    background: 'var(--ios-tertiarySystemFill)',
-                                    padding: '2px 8px',
-                                    borderRadius: '6px',
-                                }}>
-                                    {m.t1Score}–{m.t2Score}
-                                </span>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'flex-end', fontSize: '15px', fontFamily: 'monospace', fontWeight: 600 }}>
+                                    <span style={{ color: m.winner === 'team1' ? 'var(--ios-label)' : 'var(--ios-secondaryLabel)' }}>
+                                        {m.t1Score}
+                                    </span>
+                                    <span style={{ color: m.winner === 'team2' ? 'var(--ios-label)' : 'var(--ios-secondaryLabel)' }}>
+                                        {m.t2Score}
+                                    </span>
+                                </div>
                             }
                         />
                     ))

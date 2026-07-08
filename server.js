@@ -10,6 +10,7 @@ import jwt from 'jsonwebtoken';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import { randomUUID } from 'crypto';
+import stringSimilarity from 'string-similarity';
 
 // Auth configuration
 const JWT_SECRET = process.env.JWT_SECRET || 'padel-elo-manager-dev-secret-change-in-production';
@@ -1561,20 +1562,64 @@ app.post('/api/tournaments/starting-elos', async (req, res) => {
     }
 });
 
+// GET /api/players/search - Search for players with similarity >= 70%
+app.get('/api/players/search', async (req, res) => {
+    try {
+        const { name, surname, workspaceId } = req.query;
+        if (!name || !surname || !workspaceId) {
+            return res.status(400).json({ message: 'Missing query parameters' });
+        }
+
+        const players = await sql`
+            SELECT id, name, surname, current_elo 
+            FROM players 
+            WHERE workspace_id = ${workspaceId}
+        `;
+
+        const candidates = [];
+        const targetSurname = surname.toLowerCase();
+        
+        for (const p of players) {
+            const surnameSim = stringSimilarity.compareTwoStrings(targetSurname, p.surname.toLowerCase());
+            if (surnameSim >= 0.70) {
+                const nameSim = stringSimilarity.compareTwoStrings(name.toLowerCase(), p.name.toLowerCase());
+                candidates.push({
+                    player: {
+                        id: p.id,
+                        name: p.name,
+                        surname: p.surname,
+                        currentElo: p.current_elo
+                    },
+                    surnameSimilarity: surnameSim,
+                    nameSimilarity: nameSim
+                });
+            }
+        }
+
+        candidates.sort((a, b) => b.surnameSimilarity - a.surnameSimilarity);
+        res.json(candidates);
+    } catch (error) {
+        logger.error('Failed to search players', error);
+        res.status(500).json({ message: 'Failed to search players', error: error.message });
+    }
+});
+
 // POST /api/players - Add player
 app.post('/api/players', async (req, res) => {
     try {
-        const { name, surname, position } = req.body;
+        const { name, surname, position, currentElo } = req.body;
         if (!name || !surname || !position) {
             return res.status(400).json({ message: 'Missing required fields' });
         }
+        
+        const initialEloToSet = currentElo !== undefined ? currentElo : 1500;
 
         await sql`
             INSERT INTO players (name, surname, position, initial_elo, current_elo, workspace_id)
-            VALUES (${name}, ${surname}, ${position}, 1500, 1500, ${req.workspaceId});
+            VALUES (${name.trim()}, ${surname.trim()}, ${position}, ${initialEloToSet}, ${initialEloToSet}, ${req.workspaceId});
         `;
 
-        logger.info('Giocatore aggiunto con successo', { name, surname, position });
+        logger.info('Giocatore aggiunto con successo', { name, surname, position, initialEloToSet });
         res.json({ message: 'Giocatore aggiunto con successo' });
     } catch (error) {
         logger.error('Failed to add player', error);
@@ -2745,7 +2790,9 @@ app.put('/api/team-tournaments/:tournamentId/teams/:teamId', async (req, res) =>
 
         const normalizedPlayers = players.map(player => ({
             name: String(player?.name || '').trim(),
-            surname: String(player?.surname || '').trim()
+            surname: String(player?.surname || '').trim(),
+            id: player?.id || undefined,
+            currentElo: player?.currentElo !== undefined ? Number(player.currentElo) : undefined
         }));
 
         const teamResult = await sql`
@@ -2879,10 +2926,35 @@ app.put('/api/team-tournaments/:tournamentId/teams/:teamId', async (req, res) =>
             }
         }
 
+        const linkedPlayers = [];
+        for (const p of normalizedPlayers) {
+            if (!p.name && !p.surname) {
+                linkedPlayers.push(null);
+                continue;
+            }
+            if (p.id) {
+                const existing = await sql`SELECT id FROM players WHERE id = ${p.id} AND workspace_id = ${req.workspaceId} LIMIT 1`;
+                if (existing.length > 0) {
+                    linkedPlayers.push({ id: p.id, name: p.name, surname: p.surname });
+                } else {
+                    linkedPlayers.push({ id: null, name: p.name, surname: p.surname });
+                }
+            } else {
+                const initialEloToSet = p.currentElo !== undefined && !isNaN(p.currentElo) ? p.currentElo : 1500;
+                const insertRes = await sql`
+                    INSERT INTO players (workspace_id, name, surname, position, current_elo, initial_elo)
+                    VALUES (${req.workspaceId}, ${p.name}, ${p.surname}, 'Indifferente', ${initialEloToSet}, ${initialEloToSet})
+                    RETURNING id
+                `;
+                linkedPlayers.push({ id: insertRes[0].id, name: p.name, surname: p.surname });
+            }
+        }
+
         await sql`
             UPDATE team_tournament_teams
             SET name = ${name.trim()},
                 players = ${JSON.stringify(normalizedPlayers)}::jsonb,
+                players_linked = ${JSON.stringify(linkedPlayers)}::jsonb,
                 is_seeded = ${normalizedIsSeeded},
                 updated_at = NOW()
             WHERE id = ${teamId}
@@ -3560,6 +3632,122 @@ app.get('/api/team-tournament-matchdays/by-tournament/:tournamentDayId', async (
     }
 });
 
+// Funzione per applicare l'ELO per una giornata team tournament
+async function applyTeamMatchdayElo(matchdayId, workspaceId) {
+    const matchdayResult = await sql`
+        SELECT m.id, m.tournament_day_id, m.phase, t.name, t.date
+        FROM team_tournament_matchdays m
+        JOIN tournaments t ON t.id = m.tournament_day_id
+        WHERE m.id = ${matchdayId} AND t.workspace_id = ${workspaceId}
+        LIMIT 1
+    `;
+    if (matchdayResult.length === 0) return;
+    const matchday = matchdayResult[0];
+    const sourceLabel = `Giornata ${matchday.name} (${matchday.date})`;
+
+    // Revert existing ELO changes for this matchday
+    const oldHistory = await sql`
+        SELECT player_id, delta
+        FROM elo_history
+        WHERE event_id = ${matchdayId} AND type = 'team_tournament_matchday'
+    `;
+    for (const row of oldHistory) {
+        await sql`UPDATE players SET current_elo = current_elo - ${row.delta} WHERE id = ${row.player_id}`;
+    }
+    await sql`DELETE FROM elo_history WHERE event_id = ${matchdayId} AND type = 'team_tournament_matchday'`;
+
+    // Process all sub-matches
+    const matches = await sql`
+        SELECT sets, winner, cancelled, team1_players, team2_players
+        FROM team_tournament_matchday_matches
+        WHERE matchday_id = ${matchdayId}
+        ORDER BY match_index ASC
+    `;
+
+    const playerDeltas = new Map();
+    const currentElos = new Map();
+
+    const getPlayerId = async (p) => {
+        if (!p || (!p.name && !p.surname)) return null;
+        if (p.id) return p.id;
+        const rows = await sql`
+            SELECT id FROM players
+            WHERE name = ${p.name || ''} AND surname = ${p.surname || ''} AND workspace_id = ${workspaceId}
+            LIMIT 1
+        `;
+        return rows.length > 0 ? rows[0].id : null;
+    };
+
+    const getElo = async (id) => {
+        if (!id) return 1500;
+        if (currentElos.has(id)) return currentElos.get(id);
+        const rows = await sql`SELECT current_elo FROM players WHERE id = ${id}`;
+        const elo = rows.length > 0 ? Number(rows[0].current_elo) : 1500;
+        currentElos.set(id, elo);
+        return elo;
+    };
+
+    for (const m of matches) {
+        if (m.cancelled || !m.winner || m.winner === 'draw') continue;
+
+        const team1P1Id = await getPlayerId(m.team1_players?.[0]);
+        const team1P2Id = await getPlayerId(m.team1_players?.[1]);
+        const team2P1Id = await getPlayerId(m.team2_players?.[0]);
+        const team2P2Id = await getPlayerId(m.team2_players?.[1]);
+
+        if (!team1P1Id && !team2P1Id) continue; // skip if no players matched
+
+        const t1p1Elo = await getElo(team1P1Id);
+        const t1p2Elo = team1P2Id ? await getElo(team1P2Id) : t1p1Elo;
+        const t2p1Elo = await getElo(team2P1Id);
+        const t2p2Elo = team2P2Id ? await getElo(team2P2Id) : t2p1Elo;
+
+        const avg1 = (t1p1Elo + t1p2Elo) / 2;
+        const avg2 = (t2p1Elo + t2p2Elo) / 2;
+
+        const score = m.winner === 'team1' ? 1 : 0;
+        const { delta1, delta2 } = calculateEloChange(avg1, avg2, score, 'team_tournament', matchday.phase);
+
+        if (team1P1Id) {
+            playerDeltas.set(team1P1Id, (playerDeltas.get(team1P1Id) || 0) + delta1);
+            currentElos.set(team1P1Id, currentElos.get(team1P1Id) + delta1);
+        }
+        if (team1P2Id) {
+            playerDeltas.set(team1P2Id, (playerDeltas.get(team1P2Id) || 0) + delta1);
+            currentElos.set(team1P2Id, currentElos.get(team1P2Id) + delta1);
+        }
+        if (team2P1Id) {
+            playerDeltas.set(team2P1Id, (playerDeltas.get(team2P1Id) || 0) + delta2);
+            currentElos.set(team2P1Id, currentElos.get(team2P1Id) + delta2);
+        }
+        if (team2P2Id) {
+            playerDeltas.set(team2P2Id, (playerDeltas.get(team2P2Id) || 0) + delta2);
+            currentElos.set(team2P2Id, currentElos.get(team2P2Id) + delta2);
+        }
+    }
+
+    // Apply cumulative deltas
+    for (const [playerId, totalDelta] of playerDeltas.entries()) {
+        if (Math.abs(totalDelta) < 0.01) continue;
+        
+        const row = await sql`SELECT current_elo FROM players WHERE id = ${playerId}`;
+        if (row.length === 0) continue;
+        
+        const eloBefore = Number(row[0].current_elo);
+        const eloAfter = eloBefore + totalDelta;
+
+        await sql`UPDATE players SET current_elo = ${eloAfter} WHERE id = ${playerId}`;
+        
+        await sql`
+            INSERT INTO elo_history (
+                player_id, event_id, type, source_label, elo_before, elo_after, delta
+            ) VALUES (
+                ${playerId}, ${matchdayId}, 'team_tournament_matchday', ${sourceLabel}, ${eloBefore}, ${eloAfter}, ${totalDelta}
+            )
+        `;
+    }
+}
+
 // PUT /api/team-tournament-matchdays/:matchdayId/results - Save results and compute summary
 app.put('/api/team-tournament-matchdays/:matchdayId/results', async (req, res) => {
     try {
@@ -3697,6 +3885,10 @@ app.put('/api/team-tournament-matchdays/:matchdayId/results', async (req, res) =
             WHERE id = ${matchdayResult[0].tournament_day_id}
               AND workspace_id = ${req.workspaceId}
         `;
+
+        if (normalizedStatus === 'completed') {
+            await applyTeamMatchdayElo(matchdayId, req.workspaceId);
+        }
 
         // Auto-generate/resolve playoff fixtures when a matchday completes.
         try {

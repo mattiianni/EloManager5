@@ -25,10 +25,12 @@
     "pdfkit": "^0.18.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "recharts": "2.12.7"
+    "recharts": "2.12.7",
+    "string-similarity": "^4.0.4"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
+    "@types/string-similarity": "^4.0.2",
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.21",
     "concurrently": "^9.2.1",

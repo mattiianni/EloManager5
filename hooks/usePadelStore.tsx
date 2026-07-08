@@ -10,7 +10,7 @@ interface PadelStore {
     eloHistory: EloHistoryEntry[];
     loading: boolean;
     fetchData: () => Promise<void>;
-    addPlayer: (name: string, surname: string, position: FieldPosition) => Promise<void>;
+    addPlayer: (name: string, surname: string, position: FieldPosition, currentElo?: number) => Promise<void>;
     updatePlayerAndElo: (playerId: string, updatedData: Pick<Player, 'name' | 'surname' | 'position'>, newElo: number, tournamentId?: string) => Promise<void>;
     deletePlayer: (playerId: string) => Promise<void>;
     addMatch: (match: Omit<Match, 'id'>) => Promise<void>;
@@ -139,10 +139,10 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         fetchData();
     }, [fetchData]);
 
-    const addPlayer = async (name: string, surname: string, position: FieldPosition): Promise<void> => {
+    const addPlayer = async (name: string, surname: string, position: FieldPosition, currentElo?: number): Promise<void> => {
         await apiRequest('/api/players', {
             method: 'POST',
-            body: JSON.stringify({ name, surname, position }),
+            body: JSON.stringify({ name, surname, position, currentElo }),
         });
         await fetchData(); // Refetch all data to get the new state from the server
     };
