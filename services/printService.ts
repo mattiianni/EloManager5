@@ -472,7 +472,7 @@ export const printChart = (chartContainerId: string): boolean => {
 const PRINT_COLORS = ['#38bdf8', '#818cf8', '#f87171', '#fbbf24', '#4ade80', '#a78bfa', '#f472b6', '#2dd4bf'];
 
 export const printEloChart = (
-    chartData: { eventIndex: number; [playerId: string]: number }[],
+    chartData: { eventIndex: number; sourceLabel?: string; [playerId: string]: any }[],
     playerIds: string[],
     players: Player[],
 ): boolean => {
@@ -527,7 +527,8 @@ export const printEloChart = (
         const x = toX(d.eventIndex);
         svg += `<line x1="${x.toFixed(1)}" y1="${pad.top}" x2="${x.toFixed(1)}" y2="${svgHeight - pad.bottom}" stroke="#e0e0e0" stroke-dasharray="4,3"/>`;
         if (i % step === 0 || i === chartData.length - 1) {
-            const label = d.eventIndex >= 0 ? `G${d.eventIndex + 1}` : 'Start';
+            const defaultLabel = d.eventIndex >= 0 ? `G${d.eventIndex + 1}` : 'Start';
+            const label = d.sourceLabel || defaultLabel;
             svg += `<text x="${x.toFixed(1)}" y="${svgHeight - pad.bottom + 16}" text-anchor="middle" fill="#666" font-size="10" font-family="sans-serif">${label}</text>`;
         }
     });

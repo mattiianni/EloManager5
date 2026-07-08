@@ -313,6 +313,7 @@ const StatistichePage: React.FC = () => {
             : { inizio: '—', fine: '—' };
 
         type PStat = {
+            id?: string;
             name: string;
             surname: string;
             matchesPlayed: number;
@@ -323,11 +324,15 @@ const StatistichePage: React.FC = () => {
         };
 
         const statsByPlayer = new Map<string, PStat>();
-        const upsert = (p: { name: string; surname: string }) => {
+        const upsert = (p: { id?: string; name: string; surname: string }) => {
             const key = playerKey(p);
             const existing = statsByPlayer.get(key);
-            if (existing) return existing;
+            if (existing) {
+                if (p.id && !existing.id) existing.id = p.id;
+                return existing;
+            }
             const created: PStat = {
+                id: p.id,
                 name: p.name,
                 surname: p.surname,
                 matchesPlayed: 0,
@@ -418,10 +423,18 @@ const StatistichePage: React.FC = () => {
                 });
         });
 
+        const matchdayIds = new Set(matchdays.map(m => m.id));
         const rows = Array.from(statsByPlayer.values()).map(s => {
             const diff = s.gamesWon - s.gamesLost;
             const winPct = s.matchesPlayed > 0 ? Math.round((s.matchesWon / s.matchesPlayed) * 100) : 0;
-            return { ...s, gamesDiff: diff, winPercentage: winPct };
+            
+            let eloVar = 0;
+            if (s.id) {
+                const history = eloHistory.filter(e => e.playerId === s.id && matchdayIds.has(e.eventId));
+                eloVar = history.reduce((sum, h) => sum + h.delta, 0);
+            }
+            
+            return { ...s, gamesDiff: diff, winPercentage: winPct, eloVar };
         });
 
         const mediaGamesPerPartita = partiteDisputate > 0 ? (gamesDisputati / partiteDisputate) : 0;
@@ -522,7 +535,7 @@ const StatistichePage: React.FC = () => {
             bestPairsByWinRate,
             playerRows: rows,
         };
-    }, [selectedTeamTournamentRootId, teamTournamentConfigByRoot, teamTournamentMatchdaysByRoot, teamTournamentTeamsByRoot]);
+    }, [selectedTeamTournamentRootId, teamTournamentConfigByRoot, teamTournamentMatchdaysByRoot, teamTournamentTeamsByRoot, players, eloHistory]);
 
     const calculateTournamentStats = (tournament: Tournament): TournamentStats | null => {
         // Get ALL tournament IDs with the same series key (for multi-giornata tournaments)
@@ -1508,6 +1521,7 @@ const StatistichePage: React.FC = () => {
                                                     <th className="px-3 py-2 text-center font-semibold">GS</th>
                                                     <th className="px-3 py-2 text-center font-semibold">Diff</th>
                                                     <th className="px-3 py-2 text-center font-semibold">%</th>
+                                                    <th className="px-3 py-2 text-right font-semibold">Var. ELO</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -1521,6 +1535,9 @@ const StatistichePage: React.FC = () => {
                                                         <td className="px-3 py-2 text-center">{r.gamesLost}</td>
                                                         <td className="px-3 py-2 text-center">{r.gamesDiff >= 0 ? `+${r.gamesDiff}` : r.gamesDiff}</td>
                                                         <td className="px-3 py-2 text-center">{r.winPercentage}%</td>
+                                                        <td className={`px-3 py-2 text-right font-bold ${r.eloVar > 0 ? 'text-green-500' : r.eloVar < 0 ? 'text-red-500' : 'text-gray-500'}`}>
+                                                            {r.eloVar > 0 ? '+' : ''}{r.eloVar?.toFixed(2) || '0.00'}
+                                                        </td>
                                                     </tr>
                                                 ))}
                                             </tbody>

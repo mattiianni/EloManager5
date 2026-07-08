@@ -11,6 +11,7 @@ import MatchScoreInput from './ui/MatchScoreInput.tsx';
 import { HIGSheet } from './ui/HIGSheet.tsx';
 import { PrintIcon } from './ui/Icons.tsx';
 import BeatTheBoxFlow from './BeatTheBoxFlow.tsx';
+import TpraCreationFlow from './TpraCreationFlow.tsx';
 import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
 
 interface TournamentFlowProps {
@@ -21,7 +22,7 @@ interface TournamentFlowProps {
  forceExistingTournament?: boolean;
 }
 
-type Step = 'tournament-selection' | 'setup' | 'americano-info' | 'torneo-libero-setup' | 'torneo-libero-scoring' | 'gironi-setup' | 'gironi-phase' | 'gironi-standings-intro' | 'gironi-semifinals' | 'gironi-finals' | 'scoring' | 'finals' | 'results';
+type Step = 'tournament-selection' | 'setup' | 'americano-info' | 'torneo-libero-setup' | 'torneo-libero-scoring' | 'gironi-setup' | 'gironi-phase' | 'gironi-standings-intro' | 'gironi-semifinals' | 'gironi-finals' | 'scoring' | 'finals' | 'results' | 'tpra-flow';
 
 type TournamentFormat = 
  | 'match-singolo'
@@ -30,7 +31,8 @@ type TournamentFormat =
  | 'americano'
  | 'torneo-libero'
  | 'gironi-fase-finale'
- | 'beat-the-box';
+ | 'beat-the-box'
+ | 'eliminazione-diretta';
 
 // Helper function for Beat the Box
 const groupMatchesIntoBoxes = (matches: Match[]) => {
@@ -426,13 +428,13 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  } else if (numPairs === 3) {
  return []; // No buttons for 3 pairs
  } else if (numPairs === 4) {
- return ['torneotto-30', 'round-robin-finali', 'americano', 'torneo-libero', 'beat-the-box'];
+ return ['torneotto-30', 'round-robin-finali', 'americano', 'torneo-libero', 'beat-the-box', 'eliminazione-diretta'];
  } else if (numPairs === 5) {
- return ['round-robin-finali', 'torneo-libero'];
- } else if (numPairs >= 6 && numPairs <= 10 && numPairs % 2 === 0) {
- return ['round-robin-finali', 'americano', 'torneo-libero', 'gironi-fase-finale', 'beat-the-box'];
- } else if (numPairs >= 6 && numPairs <= 10) {
- return ['round-robin-finali', 'americano', 'torneo-libero', 'gironi-fase-finale'];
+ return ['round-robin-finali', 'torneo-libero', 'eliminazione-diretta'];
+ } else if (numPairs >= 6 && numPairs % 2 === 0) {
+ return ['round-robin-finali', 'americano', 'torneo-libero', 'gironi-fase-finale', 'beat-the-box', 'eliminazione-diretta'];
+ } else if (numPairs >= 6) {
+ return ['round-robin-finali', 'americano', 'torneo-libero', 'gironi-fase-finale', 'eliminazione-diretta'];
  }
  
  return [];
@@ -447,6 +449,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  case 'torneo-libero': return 'Torneo Libero';
  case 'gironi-fase-finale': return 'Gironi + Fase Finale';
  case 'beat-the-box': return 'Beat the Box';
+ case 'eliminazione-diretta': return 'Eliminazione Diretta';
  default: return '';
  }
  };
@@ -473,6 +476,8 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  } else if (format === 'gironi-fase-finale') {
  setStep('setup');
  } else if (format === 'beat-the-box') {
+ setStep('setup');
+ } else if (format === 'eliminazione-diretta') {
  setStep('setup');
  } else {
  setStep('setup');
@@ -1158,12 +1163,17 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  setStep('torneo-libero-setup');
  return;
  }
- 
- // For Gironi + Fase Finale, go to gironi-setup
- if (selectedFormat === 'gironi-fase-finale') {
- setStep('gironi-setup');
- return;
- }
+    // For Gironi + Fase Finale, go to gironi-setup
+    if (selectedFormat === 'gironi-fase-finale') {
+        setStep('gironi-setup');
+        return;
+    }
+
+    // For TPRA Eliminazione Diretta, go to tpra-flow
+    if (selectedFormat === 'eliminazione-diretta') {
+        setStep('tpra-flow');
+        return;
+    }
  
  // For Beat the Box, render dedicated flow
  if (selectedFormat === 'beat-the-box') {
@@ -2585,6 +2595,18 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  );
  }
  
+ if (step === 'tpra-flow') {
+ return (
+ <TpraCreationFlow
+ pairs={pairs}
+ onFinish={onFinish}
+ tournamentDate={tournamentDate}
+ clubName={clubName}
+ tournamentName={tournamentName || 'Torneo TPRA'}
+ />
+ );
+ }
+
  if (step === 'scoring') {
  // Render Beat the Box dedicated flow
  if (selectedFormat === 'beat-the-box') {

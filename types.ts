@@ -12,6 +12,7 @@ export enum TournamentType {
     GironiFaseFinale = "Gironi + Fase Finale",
     BeatTheBox = "Beat the Box",
     TorneoASquadre = "Torneo a Squadre",
+    EliminazioneDiretta = "Eliminazione Diretta",
 }
 
 export interface Player {
@@ -58,6 +59,7 @@ export interface Tournament {
     teamTournamentTeam1Number?: number | null; // For Torneo a Squadre giornate: team1 number for the fixture
     teamTournamentTeam2Number?: number | null; // For Torneo a Squadre giornate: team2 number for the fixture
     teamTournamentPhase?: 'round_robin' | TeamTournamentPlayoffPhase | null;
+    isBye?: boolean; // Se la partita del tabellone a eliminazione diretta è un BYE
 }
 
 export interface EloHistoryEntry {
@@ -67,7 +69,8 @@ export interface EloHistoryEntry {
     eloAfter: number;
     delta: number;
     date: string;
-    type: 'match' | 'manual' | 'tournament';
+    type: 'match' | 'manual' | 'tournament' | 'team_tournament_matchday';
+    sourceLabel?: string;
 }
 
 export interface RankingEntry extends Player {

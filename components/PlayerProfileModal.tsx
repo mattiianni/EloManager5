@@ -16,7 +16,9 @@ const CustomTooltip: React.FC<any> = ({ active, payload, label, theme, chartData
     if (active && payload && payload.length) {
         return (
             <div className={`p-3 rounded-md shadow-lg ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-300' : 'bg-white border border-gray-200 text-gray-700'}`}>
-                <p className="label">{label === -1 ? 'Start' : `Event #${label + 1}`}</p>
+                <p className="label font-bold mb-1">
+                    {label === -1 ? 'Start' : (payload[0].payload.sourceLabel || `Event #${label + 1}`)}
+                </p>
                 {payload.map((pld: any, index: number) => (
                     <div key={index} style={{ color: pld.color }}>
                         {`ELO: ${pld.value.toFixed(2)}`}
@@ -48,7 +50,13 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
     const stats = useMemo(() => {
         if (!player) return null;
 
-        const total = playerMatches.length;
+        const playerHistory = eloHistory
+            .filter(e => e.playerId === player.id)
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        const ttMatchesCount = playerHistory.filter(e => e.type === 'team_tournament_matchday').length;
+        const total = playerMatches.length + ttMatchesCount;
+        
         const wins = playerMatches.filter(m => {
             const isTeam1 = m.team1.includes(player.id);
             return (isTeam1 && m.winner === 'team1') || (!isTeam1 && m.winner === 'team2');
@@ -71,10 +79,6 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
             return (isTeam1 && m.winner === 'team1') || (!isTeam1 && m.winner === 'team2');
         });
 
-        const playerHistory = eloHistory
-            .filter(e => e.playerId === player.id)
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
         // Best streak (from matches)
         let bestStreak = 0;
         let currentStreak = 0;
@@ -92,7 +96,7 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
         // Last delta
         const lastDelta = playerHistory.length > 0 ? playerHistory[playerHistory.length - 1].delta : 0;
 
-        return { total, wins, gamesWon, gamesLost, form, bestStreak, lastDelta };
+        return { total, totalClassic: playerMatches.length, ttMatchesCount, wins, gamesWon, gamesLost, form, bestStreak, lastDelta };
     }, [player, playerMatches, eloHistory]);
 
     // ELO chart data: same approach as RankingChart.tsx (cumulative deltas)
@@ -129,14 +133,19 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
 
         const data: { eventIndex: number; elo: number }[] = [];
         // Initial point
-        data.push({ eventIndex: -1, elo: base });
+        data.push({ eventIndex: -1, elo: base, sourceLabel: 'Start' });
 
         // Cumulative approach (same as RankingChart)
         let cumulative = 0;
         orderedEventIds.forEach((eventId, index) => {
             const deltaForEvent = eventDeltaSum.get(eventId) || 0;
+            const firstEntryForEvent = eventFirstEntry.get(eventId);
             cumulative += deltaForEvent;
-            data.push({ eventIndex: index, elo: base + cumulative });
+            data.push({ 
+                eventIndex: index, 
+                elo: base + cumulative,
+                sourceLabel: firstEntryForEvent?.sourceLabel || `Event #${index + 1}`
+            });
         });
 
         return data;
@@ -279,15 +288,15 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
                                 <div className="text-xl font-bold text-gray-900 dark:text-white">{stats.total}</div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400">Partite</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">Partite / Giornate</div>
                             </div>
-                            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
-                                <div className="text-xl font-bold text-green-600 dark:text-green-400">{stats.wins} <span className="text-sm font-normal">({stats.total > 0 ? ((stats.wins / stats.total) * 100).toFixed(0) : 0}%)</span></div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400">Vinte</div>
+                            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center" title="Solo tornei classici">
+                                <div className="text-xl font-bold text-green-600 dark:text-green-400">{stats.wins} <span className="text-sm font-normal">({stats.totalClassic > 0 ? ((stats.wins / stats.totalClassic) * 100).toFixed(0) : 0}%)</span></div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">Vinte (Classici)</div>
                             </div>
-                            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
+                            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center" title="Solo tornei classici">
                                 <div className="text-xl font-bold text-gray-900 dark:text-white">{stats.gamesWon} <span className="text-sm font-normal text-gray-500">/ {stats.gamesLost}</span></div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400">Games V/P</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">Games V/P (Classici)</div>
                             </div>
                             <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
                                 <div className="flex items-center justify-center gap-1.5">

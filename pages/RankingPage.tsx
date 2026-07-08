@@ -21,15 +21,46 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
     const [selectedTournamentId, setSelectedTournamentId] = useState<string | null>(null);
     const [presenceThreshold, setPresenceThreshold] = useState<number>(0);
     const [showAllPlayers, setShowAllPlayers] = useState<boolean>(false);
+    const [selectedTeamTournamentMatchdayIds, setSelectedTeamTournamentMatchdayIds] = useState<string[]>([]);
+    const { getTeamTournamentMatchdays } = usePadelStore();
 
     // Reset showAllPlayers when tournament or threshold changes
     React.useEffect(() => {
         setShowAllPlayers(false);
     }, [selectedTournamentId, presenceThreshold]);
 
+    // Fetch matchdays if the selected tournament is a team tournament
+    React.useEffect(() => {
+        if (!selectedTournamentId) {
+            setSelectedTeamTournamentMatchdayIds([]);
+            return;
+        }
+        
+        const isTeamTournament = tournaments.some(t => t.name === selectedTournamentId && t.type === TournamentType.TorneoASquadre && !t.teamTournamentRootId);
+        if (isTeamTournament) {
+            const rootTournament = tournaments.find(t => t.name === selectedTournamentId && t.type === TournamentType.TorneoASquadre && !t.teamTournamentRootId);
+            if (rootTournament) {
+                getTeamTournamentMatchdays(rootTournament.id).then(matchdays => {
+                    setSelectedTeamTournamentMatchdayIds(matchdays.map(m => m.id));
+                }).catch(err => {
+                    console.error("Failed to load matchdays for ranking", err);
+                    setSelectedTeamTournamentMatchdayIds([]);
+                });
+            }
+        } else {
+            setSelectedTeamTournamentMatchdayIds([]);
+        }
+    }, [selectedTournamentId, tournaments, getTeamTournamentMatchdays]);
+
     // Calculate giornate for selected tournament SERIES (by seriesKey = giornataName || name)
     const tournamentGiornate = useMemo(() => {
         if (!selectedTournamentId) return [];
+        const isTeamTournament = tournaments.some(t => t.name === selectedTournamentId && t.type === TournamentType.TorneoASquadre && !t.teamTournamentRootId);
+        if (isTeamTournament) {
+            const rootId = tournaments.find(t => t.name === selectedTournamentId && t.type === TournamentType.TorneoASquadre && !t.teamTournamentRootId)?.id;
+            const tournamentRecords = tournaments.filter(t => t.teamTournamentRootId === rootId);
+            return tournamentRecords.map(t => new Date(t.date).toISOString().split('T')[0]).sort();
+        }
         const tournamentRecords = tournaments.filter(t => (t.giornataName || t.name) === selectedTournamentId);
         return tournamentRecords.map(t => new Date(t.date).toISOString().split('T')[0]).sort();
     }, [selectedTournamentId, tournaments]);
@@ -44,15 +75,27 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
         let filteredPlayers = players;
         
         if (selectedTournamentId) {
-            const tournamentIds = tournaments
-                .filter(t => (t.giornataName || t.name) === selectedTournamentId)
-                .map(t => t.id);
-            const tournamentMatches = matches.filter(m => m.tournamentId && tournamentIds.includes(m.tournamentId));
+            const isTeamTournament = tournaments.some(t => t.name === selectedTournamentId && t.type === TournamentType.TorneoASquadre && !t.teamTournamentRootId);
             const playersInTournament = new Set<string>();
-            tournamentMatches.forEach(m => {
-                m.team1.forEach(id => playersInTournament.add(id));
-                m.team2.forEach(id => playersInTournament.add(id));
-            });
+            
+            if (isTeamTournament) {
+                // Find all players that participated in these matchdays via eloHistory
+                // (Since TeamTournamentMatchdays aren't loaded in matches state)
+                eloHistory.forEach(e => {
+                    if (selectedTeamTournamentMatchdayIds.includes(e.eventId)) {
+                        playersInTournament.add(e.playerId);
+                    }
+                });
+            } else {
+                const tournamentIds = tournaments
+                    .filter(t => (t.giornataName || t.name) === selectedTournamentId)
+                    .map(t => t.id);
+                const tournamentMatches = matches.filter(m => m.tournamentId && tournamentIds.includes(m.tournamentId));
+                tournamentMatches.forEach(m => {
+                    m.team1.forEach(id => playersInTournament.add(id));
+                    m.team2.forEach(id => playersInTournament.add(id));
+                });
+            }
             filteredPlayers = players.filter(p => playersInTournament.has(p.id));
         }
         
@@ -73,41 +116,60 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
                     return tournament?.status === 'completed';
                 });
                 
-                const matchesPlayed = playerMatches.length;
-
+                const isTeamTournament = selectedTournamentId && tournaments.some(t => t.name === selectedTournamentId && t.type === TournamentType.TorneoASquadre && !t.teamTournamentRootId);
+                
+                let matchesPlayed = playerMatches.length;
                 let matchesWon = 0;
                 let gamesWon = 0;
                 let gamesLost = 0;
-
-                playerMatches.forEach(match => {
-                    const isTeam1 = match.team1.includes(player.id);
-                    const setsArray = Array.isArray(match.sets) ? match.sets : Object.values(match.sets) as SetScore[];
-                    const team1GamesTotal = setsArray.reduce((sum, set) => sum + (set.team1 || 0), 0);
-                    const team2GamesTotal = setsArray.reduce((sum, set) => sum + (set.team2 || 0), 0);
-
-                    if (isTeam1) {
-                        gamesWon += team1GamesTotal;
-                        gamesLost += team2GamesTotal;
-                        if (match.winner === 'team1') {
-                            matchesWon++;
+                
+                if (isTeamTournament) {
+                    // For team tournaments, we don't have individual match data loaded in `matches` state globally.
+                    // We deduce wins/losses from eloHistory deltas if needed, or we just leave them at 0 for team tournaments for now,
+                    // as detailed match stats aren't easily available here without fetching all matches.
+                    // But we DO know they played if they have an eloHistory entry for the matchday.
+                    const tournamentEloEntries = eloHistory.filter(e => 
+                        e.playerId === player.id && selectedTeamTournamentMatchdayIds.includes(e.eventId)
+                    );
+                    matchesPlayed = tournamentEloEntries.length; // Approximate matches played by matchdays participated
+                } else {
+                    playerMatches.forEach(match => {
+                        const isTeam1 = match.team1.includes(player.id);
+                        const setsArray = Array.isArray(match.sets) ? match.sets : Object.values(match.sets) as SetScore[];
+                        const team1GamesTotal = setsArray.reduce((sum, set) => sum + (set.team1 || 0), 0);
+                        const team2GamesTotal = setsArray.reduce((sum, set) => sum + (set.team2 || 0), 0);
+    
+                        if (isTeam1) {
+                            gamesWon += team1GamesTotal;
+                            gamesLost += team2GamesTotal;
+                            if (match.winner === 'team1') {
+                                matchesWon++;
+                            }
+                        } else {
+                            gamesWon += team2GamesTotal;
+                            gamesLost += team1GamesTotal;
+                            if (match.winner === 'team2') {
+                                matchesWon++;
+                            }
                         }
-                    } else {
-                        gamesWon += team2GamesTotal;
-                        gamesLost += team1GamesTotal;
-                        if (match.winner === 'team2') {
-                            matchesWon++;
-                        }
-                    }
-                });
+                    });
+                }
                 
                 const winPercentage = matchesPlayed > 0 ? (matchesWon / matchesPlayed) * 100 : 0;
                 
                 let lastDelta = null;
                 if (selectedTournamentId) {
-                    const tournamentIds = tournaments.filter(t => (t.giornataName || t.name) === selectedTournamentId).map(t => t.id);
-                    const tournamentEloEntries = eloHistory.filter(e => 
-                        e.playerId === player.id && tournamentIds.includes(e.eventId)
-                    ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                    let tournamentEloEntries: import('../types.ts').EloHistory[] = [];
+                    if (isTeamTournament) {
+                        tournamentEloEntries = eloHistory.filter(e => 
+                            e.playerId === player.id && selectedTeamTournamentMatchdayIds.includes(e.eventId)
+                        ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                    } else {
+                        const tournamentIds = tournaments.filter(t => (t.giornataName || t.name) === selectedTournamentId).map(t => t.id);
+                        tournamentEloEntries = eloHistory.filter(e => 
+                            e.playerId === player.id && tournamentIds.includes(e.eventId)
+                        ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                    }
                     lastDelta = tournamentEloEntries.length > 0 ? tournamentEloEntries[0].delta : null;
                 } else {
                     const lastEloEntry = sortedEventsByDate.find(e => e.playerId === player.id);
@@ -116,10 +178,17 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
 
                 let displayElo = player.currentElo;
                 if (selectedTournamentId) {
-                    const tournamentIds = tournaments.filter(t => (t.giornataName || t.name) === selectedTournamentId).map(t => t.id);
-                    const tournamentEloEntries = eloHistory.filter(e => 
-                        e.playerId === player.id && tournamentIds.includes(e.eventId)
-                    ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                    let tournamentEloEntries: import('../types.ts').EloHistory[] = [];
+                    if (isTeamTournament) {
+                        tournamentEloEntries = eloHistory.filter(e => 
+                            e.playerId === player.id && selectedTeamTournamentMatchdayIds.includes(e.eventId)
+                        ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                    } else {
+                        const tournamentIds = tournaments.filter(t => (t.giornataName || t.name) === selectedTournamentId).map(t => t.id);
+                        tournamentEloEntries = eloHistory.filter(e => 
+                            e.playerId === player.id && tournamentIds.includes(e.eventId)
+                        ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                    }
                     
                     if (tournamentEloEntries.length > 0) {
                         const initialElo = 1500;
@@ -131,14 +200,28 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
                 let presencePercentage = 100;
                 let playerGiornateCount = 0;
                 if (selectedTournamentId && tournamentGiornate.length > 0) {
-                    const tournamentRecords = tournaments.filter(t => (t.giornataName || t.name) === selectedTournamentId);
-                    playerGiornateCount = tournamentRecords.filter(tournamentRecord => {
-                        return matches.some(m => 
-                            m.tournamentId === tournamentRecord.id && 
-                            (m.team1.includes(player.id) || m.team2.includes(player.id))
-                        );
-                    }).length;
-                    presencePercentage = (playerGiornateCount / tournamentGiornate.length) * 100;
+                    if (isTeamTournament) {
+                        const rootId = tournaments.find(t => t.name === selectedTournamentId && t.type === TournamentType.TorneoASquadre && !t.teamTournamentRootId)?.id;
+                        const tournamentRecords = tournaments.filter(t => t.teamTournamentRootId === rootId);
+                        // Player presence in team tournament giornate is complicated since we only have matchdays.
+                        // We will check if the player has an eloHistory entry for any matchday in that giornata.
+                        // Since eloHistory has eventId = matchdayId, we can just say `matchesPlayed` is `playerGiornateCount` roughly.
+                        playerGiornateCount = Array.from(new Set(
+                            eloHistory
+                                .filter(e => e.playerId === player.id && selectedTeamTournamentMatchdayIds.includes(e.eventId))
+                                .map(e => e.eventId)
+                        )).length;
+                        presencePercentage = (playerGiornateCount / tournamentGiornate.length) * 100;
+                    } else {
+                        const tournamentRecords = tournaments.filter(t => (t.giornataName || t.name) === selectedTournamentId);
+                        playerGiornateCount = tournamentRecords.filter(tournamentRecord => {
+                            return matches.some(m => 
+                                m.tournamentId === tournamentRecord.id && 
+                                (m.team1.includes(player.id) || m.team2.includes(player.id))
+                            );
+                        }).length;
+                        presencePercentage = (playerGiornateCount / tournamentGiornate.length) * 100;
+                    }
                 }
 
                 return {
@@ -175,9 +258,14 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
     const completedTournaments = useMemo(() => {
         const tournamentMap = new Map<string, Tournament>();
         tournaments
-            .filter(t => t.status === 'completed' && t.type !== TournamentType.TorneoASquadre)
+            .filter(t => {
+                if (t.type === TournamentType.TorneoASquadre && !t.teamTournamentRootId) {
+                    return true; // Always show root team tournaments
+                }
+                return t.status === 'completed' && t.type !== TournamentType.TorneoASquadre;
+            })
             .forEach(t => {
-                const seriesKey = (t.giornataName || t.name);
+                const seriesKey = (t.type === TournamentType.TorneoASquadre && !t.teamTournamentRootId) ? t.name : (t.giornataName || t.name);
                 if (!tournamentMap.has(seriesKey)) {
                     tournamentMap.set(seriesKey, t);
                 }
@@ -239,11 +327,15 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
                         className="flex-1 bg-transparent text-ios-label focus:outline-none sf-body appearance-none"
                     >
                         <option value="">Generale</option>
-                        {completedTournaments.map(tournament => (
-                            <option key={(tournament.giornataName || tournament.name)} value={(tournament.giornataName || tournament.name)}>
-                                {tournament.giornataName || tournament.name}
-                            </option>
-                        ))}
+                        {completedTournaments.map(tournament => {
+                            const isTeamTourney = tournament.type === TournamentType.TorneoASquadre && !tournament.teamTournamentRootId;
+                            const key = isTeamTourney ? tournament.name : (tournament.giornataName || tournament.name);
+                            return (
+                                <option key={key} value={key}>
+                                    {key}
+                                </option>
+                            );
+                        })}
                     </select>
                     <SFIcon name="chevron.up.chevron.down" size={14} color="var(--ios-label-tertiary)" />
                 </div>

@@ -10,7 +10,9 @@ const CustomTooltip: React.FC<any> = ({ active, payload, label, theme }) => {
     if (active && payload && payload.length) {
         return (
             <div className={`p-3 rounded-md shadow-lg ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-300' : 'bg-white border border-gray-200 text-gray-700'}`}>
-                <p className="label">{`Event #${label + 1}`}</p>
+                <p className="label font-bold mb-1">
+                    {label === -1 ? 'Start' : (payload[0].payload.sourceLabel || `Event #${label + 1}`)}
+                </p>
                 {payload.map((pld: any, index: number) => (
                     <div key={index} style={{ color: pld.color }}>
                         {`${pld.name}: ${pld.value.toFixed(2)}`}
@@ -123,7 +125,7 @@ const RankingChart: React.FC<RankingChartProps> = ({ theme, selectedSeriesKey })
         });
 
         // Initial point = rating immediately BEFORE the first giornata of the selected series
-        const initialPoint: any = { eventIndex: -1 };
+        const initialPoint: any = { eventIndex: -1, sourceLabel: 'Start' };
         const firstEventId = orderedEventIds[0];
         const firstEventDate = firstEventId ? new Date(eventDates.get(firstEventId) || 0).getTime() : 0;
 
@@ -159,7 +161,16 @@ const RankingChart: React.FC<RankingChartProps> = ({ theme, selectedSeriesKey })
         selectedPlayerIds.forEach(pid => cumulativeByPlayer.set(pid, 0));
 
         orderedEventIds.forEach((eventId, index) => {
-            const point: any = { eventIndex: index };
+            let sourceLabel = '';
+            const historyEntry = eloHistory.find(e => e.eventId === eventId);
+            if (historyEntry) {
+                sourceLabel = historyEntry.sourceLabel || '';
+            }
+
+            const point: any = { 
+                eventIndex: index,
+                sourceLabel: sourceLabel || `Event #${index + 1}`
+            };
 
             selectedPlayerIds.forEach(playerId => {
                 const deltaMap = perPlayerEventDeltaSum.get(playerId);

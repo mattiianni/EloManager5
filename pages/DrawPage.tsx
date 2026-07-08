@@ -9,6 +9,10 @@ import { HIGSheet } from '../components/ui/HIGSheet';
 import TournamentFlow from '../components/TournamentFlow.tsx';
 import ShuffleAnimation from '../components/ui/ShuffleAnimation.tsx';
 import { ShuffleIcon, ChevronDownIcon, PencilIcon } from '../components/ui/Icons.tsx';
+import { useAuth } from '../hooks/useAuth.tsx';
+import { usePlayerSimilarity, SimilarityResult } from '../hooks/usePlayerSimilarity.ts';
+import PlayerSimilarityModal from '../components/PlayerSimilarityModal.tsx';
+import EloPlaytomicInput from '../components/EloPlaytomicInput.tsx';
 
 interface DrawPageProps {
     setActivePage: (page: 'Dashboard' | 'Ranking' | 'Players' | 'Matches' | 'Draw' | 'Tournaments') => void;
@@ -83,6 +87,8 @@ const DrawPage: React.FC<DrawPageProps> = ({
     launchMode = null,
     clearLaunchMode
 }) => {
+    const { workspaceId } = useAuth();
+    const { searchSimilarPlayer, isSearching } = usePlayerSimilarity(workspaceId);
     const {
         players,
         loading,
@@ -103,6 +109,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
     const [seeds, setSeeds] = useState<string[]>([]);
     const [mode, setMode] = useState<DrawMode>('Normal');
     const [numPairs, setNumPairs] = useState(2);
+    const [isCustomNumPairs, setIsCustomNumPairs] = useState(false);
     const [drawnPairs, setDrawnPairs] = useState<[Player, Player][] | null>(null);
     const [manualPairs, setManualPairs] = useState<[string, string][]>([]);
     const [isShuffling, setIsShuffling] = useState(false);
@@ -138,11 +145,16 @@ const DrawPage: React.FC<DrawPageProps> = ({
     const [isSavingTeamTournamentConfig, setIsSavingTeamTournamentConfig] = useState(false);
     const [teamTournamentTeamToEdit, setTeamTournamentTeamToEdit] = useState<TeamTournamentTeam | null>(null);
     const [editTeamName, setEditTeamName] = useState('');
-    const [editTeamPlayers, setEditTeamPlayers] = useState<{ name: string; surname: string }[]>([]);
+    const [editTeamPlayers, setEditTeamPlayers] = useState<{ id?: string; name: string; surname: string; currentElo?: number; }[]>([]);
     const [editTeamIsSeeded, setEditTeamIsSeeded] = useState(false);
     const [isSavingTeamTournamentTeam, setIsSavingTeamTournamentTeam] = useState(false);
     const [isCompletingTeamTournamentConfiguration, setIsCompletingTeamTournamentConfiguration] = useState(false);
     const [teamTournamentConfigView, setTeamTournamentConfigView] = useState<TeamTournamentConfigView>('config');
+
+    // Similarity Check State
+    const [similarityCheckQueue, setSimilarityCheckQueue] = useState<{index: number, name: string, surname: string}[]>([]);
+    const [currentSimilarityCandidates, setCurrentSimilarityCandidates] = useState<SimilarityResult[]>([]);
+    const [isSimilarityModalOpen, setIsSimilarityModalOpen] = useState(false);
     
     const sortedPlayers = [...players].sort((a,b) => a.name.localeCompare(b.name));
     const participantPlayers = players.filter(p => participants.includes(p.id));
@@ -581,12 +593,15 @@ const DrawPage: React.FC<DrawPageProps> = ({
     };
 
     const openTeamTournamentTeamEditor = (team: TeamTournamentTeam) => {
-        const playerCount = team.targetPlayerCount || teamTournamentConfig?.defaultPlayersPerTeam || 1;
+        const fallbackCount = teamTournamentConfig?.defaultPlayersPerTeam || 1;
+        const playerCount = Math.max(team.players.length, team.targetPlayerCount || fallbackCount);
         const normalizedPlayers = Array.from({ length: playerCount }, (_, index) => {
             const existingPlayer = team.players[index];
             return {
+                id: existingPlayer?.id,
                 name: existingPlayer?.name || '',
-                surname: existingPlayer?.surname || ''
+                surname: existingPlayer?.surname || '',
+                currentElo: existingPlayer?.currentElo
             };
         });
 
@@ -597,7 +612,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
         setError(null);
     };
 
-    const handleTeamPlayerChange = (index: number, field: 'name' | 'surname', value: string) => {
+    const handleTeamPlayerChange = (index: number, field: 'name' | 'surname' | 'currentElo', value: string | number) => {
         setError(null);
         setEditTeamPlayers(currentPlayers =>
             currentPlayers.map((player, playerIndex) =>
@@ -693,6 +708,26 @@ const DrawPage: React.FC<DrawPageProps> = ({
         return false;
     };
 
+    const processNextSimilarityCheck = async (queue: {index: number, name: string, surname: string}[]) => {
+        if (queue.length === 0) {
+            // Queue empty, proceed to save
+            await executeSaveTeamTournamentTeam();
+            return;
+        }
+
+        const next = queue[0];
+        const similar = await searchSimilarPlayer(next.name, next.surname);
+        
+        if (similar.length > 0) {
+            setCurrentSimilarityCandidates(similar);
+            setSimilarityCheckQueue(queue);
+            setIsSimilarityModalOpen(true);
+        } else {
+            // No similarities for this one, proceed to next
+            processNextSimilarityCheck(queue.slice(1));
+        }
+    };
+
     const handleUpdateTeamTournamentTeam = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -703,7 +738,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
             return;
         }
         
-        // Verifica frontend Levenshtein prima del submit
+        // Verifica frontend Levenshtein prima del submit per giocatori protetti
         for (let i = 0; i < editTeamPlayers.length; i++) {
             if (checkPlayerPlayed(i)) {
                 const orig = teamTournamentTeamToEdit.players[i]?.surname?.trim().toLowerCase() || '';
@@ -716,6 +751,22 @@ const DrawPage: React.FC<DrawPageProps> = ({
                 }
             }
         }
+
+        // Build queue for similarity check
+        const queue: {index: number, name: string, surname: string}[] = [];
+        for (let i = 0; i < editTeamPlayers.length; i++) {
+            const p = editTeamPlayers[i];
+            if (!p.id && p.name.trim() && p.surname.trim()) {
+                // If it's a new player (no ID assigned yet), check for similarities
+                queue.push({ index: i, name: p.name.trim(), surname: p.surname.trim() });
+            }
+        }
+
+        processNextSimilarityCheck(queue);
+    };
+
+    const executeSaveTeamTournamentTeam = async () => {
+        if (!teamTournamentToConfigure || !teamTournamentTeamToEdit) return;
 
         setIsSavingTeamTournamentTeam(true);
         setError(null);
@@ -1250,7 +1301,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                                 value={player.name}
                                                 onChange={e => handleTeamPlayerChange(index, 'name', e.target.value)}
                                                 className="mt-1 block w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm disabled:opacity-50 disabled:bg-gray-100 dark:disabled:bg-gray-800"
-                                                disabled={isSavingTeamTournamentTeam}
+                                                disabled={isSavingTeamTournamentTeam || !!player.id}
                                             />
                                         </div>
                                         <div>
@@ -1273,7 +1324,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                                     className={`block w-full bg-white dark:bg-gray-700 border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm disabled:opacity-50 disabled:bg-gray-100 dark:disabled:bg-gray-800 ${
                                                         surnameError ? 'border-red-500 focus:ring-red-500 focus:border-red-500 text-red-600' : 'border-gray-300 dark:border-gray-600'
                                                     }`}
-                                                    disabled={isSavingTeamTournamentTeam}
+                                                    disabled={isSavingTeamTournamentTeam || !!player.id}
                                                 />
                                                 {isSurnameValid && !surnameError && (
                                                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -1288,6 +1339,13 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                                 <p className="mt-1 text-xs text-red-600 dark:text-red-400 font-medium">{surnameError}</p>
                                             )}
                                         </div>
+                                    </div>
+                                    <div className="mt-2 p-3 bg-gray-100 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                                        <EloPlaytomicInput 
+                                            elo={player.currentElo || 1500} 
+                                            onEloChange={(newElo) => handleTeamPlayerChange(index, 'currentElo', newElo)} 
+                                            disabled={isSavingTeamTournamentTeam || !!player.id}
+                                        />
                                     </div>
                                 </div>
                                 );
@@ -1797,16 +1855,17 @@ const DrawPage: React.FC<DrawPageProps> = ({
                             <div>
                                 <label className="block text-sm font-medium text-gray-500 dark:text-gray-400">Numero Coppie da Sorteggiare</label>
                                  <div className="mt-1 flex items-center flex-wrap gap-2">
-                                    {Array.from({ length: 11 }, (_, i) => i + 2).map(num => (
+                                    {Array.from({ length: 7 }, (_, i) => i + 2).map(num => (
                                         <Button
                                             key={num}
                                             type="button"
-                                            variant={numPairs === num ? 'primary' : 'secondary'}
+                                            variant={numPairs === num && !isCustomNumPairs ? 'primary' : 'secondary'}
                                             size="sm"
                                             onClick={() => {
                                                 if (isTeamTournamentFlow) {
                                                     handleFlowChange('pairs');
                                                 }
+                                                setIsCustomNumPairs(false);
                                                 setNumPairs(num);
                                             }}
                                             className="!px-4"
@@ -1814,6 +1873,42 @@ const DrawPage: React.FC<DrawPageProps> = ({
                                             {num}
                                         </Button>
                                     ))}
+                                    
+                                    <Button
+                                        type="button"
+                                        variant={isCustomNumPairs ? 'primary' : 'secondary'}
+                                        size="sm"
+                                        onClick={() => {
+                                            if (isTeamTournamentFlow) {
+                                                handleFlowChange('pairs');
+                                            }
+                                            setIsCustomNumPairs(true);
+                                            setNumPairs(Math.max(9, numPairs)); // Assicura che parta da almeno 9
+                                        }}
+                                        className="!px-4 font-bold"
+                                    >
+                                        9+
+                                    </Button>
+
+                                    {isCustomNumPairs && (
+                                        <div className="flex items-center gap-2 ml-2">
+                                            <input
+                                                type="number"
+                                                min={9}
+                                                max={64}
+                                                value={numPairs}
+                                                onChange={(e) => {
+                                                    const val = parseInt(e.target.value, 10);
+                                                    if (!isNaN(val) && val >= 9) {
+                                                        setNumPairs(val);
+                                                    }
+                                                }}
+                                                className="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                            />
+                                            <span className="text-sm text-gray-500 dark:text-gray-400">coppie</span>
+                                        </div>
+                                    )}
+
                                     {!isNewGiornataFlow && !isLauncherContext && entryChoice !== 'existing' && (
                                         <Button
                                             type="button"
@@ -1977,6 +2072,36 @@ const DrawPage: React.FC<DrawPageProps> = ({
                     )}
                 </div>
             </div>
+            <PlayerSimilarityModal
+                isOpen={isSimilarityModalOpen}
+                onClose={() => setIsSimilarityModalOpen(false)}
+                candidates={currentSimilarityCandidates}
+                inputName={similarityCheckQueue[0]?.name || ''}
+                inputSurname={similarityCheckQueue[0]?.surname || ''}
+                onCreateNew={() => {
+                    setIsSimilarityModalOpen(false);
+                    // Procedi al prossimo senza collegare ID
+                    processNextSimilarityCheck(similarityCheckQueue.slice(1));
+                }}
+                onSelect={(selectedPlayer) => {
+                    setIsSimilarityModalOpen(false);
+                    // Update the player in the editTeamPlayers array with the existing player's details
+                    const currentCheck = similarityCheckQueue[0];
+                    setEditTeamPlayers(prev => {
+                        const newArr = [...prev];
+                        newArr[currentCheck.index] = {
+                            id: selectedPlayer.id,
+                            name: selectedPlayer.name,
+                            surname: selectedPlayer.surname,
+                            currentElo: selectedPlayer.currentElo,
+                        };
+                        return newArr;
+                    });
+                    
+                    // Procedi al prossimo
+                    processNextSimilarityCheck(similarityCheckQueue.slice(1));
+                }}
+            />
 
         </div>
     );

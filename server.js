@@ -792,7 +792,7 @@ app.post('/api/admin/transfer/tournament', requireAdmin, async (req, res) => {
 
         const oldEloHistory = (!isTeamTournament && (oldTournamentIds.length > 0 || oldMatchIds.length > 0) && oldPlayerIds.length > 0)
             ? await sql`
-                SELECT event_id, player_id, elo_before, elo_after, delta, date, type
+                SELECT event_id, player_id, elo_before, elo_after, delta, date, type, source_label
                 FROM elo_history
                 WHERE workspace_id = ${sourceWorkspaceId}
                   AND player_id = ANY(${oldPlayerIds}::uuid[])
@@ -895,8 +895,8 @@ app.post('/api/admin/transfer/tournament', requireAdmin, async (req, res) => {
             const newEventId = tournamentIdMap.get(eventIdKey) || matchIdMap.get(eventIdKey);
             if (!newPlayerId || !newEventId) continue;
             await sql`
-                INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id)
-                VALUES (${newEventId}, ${newPlayerId}, ${h.elo_before}, ${h.elo_after}, ${h.delta}, ${h.date}, ${h.type}, ${destinationWorkspaceId})
+                INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id, source_label)
+                VALUES (${newEventId}, ${newPlayerId}, ${h.elo_before}, ${h.elo_after}, ${h.delta}, ${h.date}, ${h.type}, ${destinationWorkspaceId}, ${h.source_label})
             `;
         }
 
@@ -1423,7 +1423,7 @@ app.get('/api/data', async (req, res) => {
                 LEFT JOIN team_tournament_matchdays d ON d.tournament_day_id = t.id
                 WHERE t.workspace_id = ${wsId};
             `,
-            sql`SELECT event_id, player_id, elo_before, elo_after, delta, date, type FROM elo_history WHERE workspace_id = ${wsId};`
+            sql`SELECT event_id, player_id, elo_before, elo_after, delta, date, type, source_label FROM elo_history WHERE workspace_id = ${wsId};`
         ]);
 
         const players = playersResult.map(p => ({
@@ -1475,7 +1475,8 @@ app.get('/api/data', async (req, res) => {
             eloAfter: h.elo_after,
             delta: h.delta,
             date: h.date,
-            type: h.type
+            type: h.type,
+            sourceLabel: h.source_label
         }));
 
         res.json({ players, matches, tournaments, eloHistory });
@@ -1701,15 +1702,15 @@ app.put('/api/players', async (req, res) => {
                 // Update also the tournament's elo_history: add a manual record linked to that tournament
                 // so the tournament-filtered ranking reflects the change too
                 await sql`
-                    INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id)
-                    VALUES (${tournamentId}, ${id}, ${oldElo}, ${currentElo}, ${delta}, NOW(), 'manual', ${req.workspaceId})
+                    INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id, source_label)
+                    VALUES (${tournamentId}, ${id}, ${oldElo}, ${currentElo}, ${delta}, NOW(), 'manual', ${req.workspaceId}, 'Aggiornamento Manuale')
                 `;
                 logger.info('Manual ELO update linked to tournament', { playerId: id, tournamentId, delta });
             } else {
                 // Global-only update: random event_id, not linked to any tournament
                 await sql`
-                    INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id)
-                    VALUES (gen_random_uuid(), ${id}, ${oldElo}, ${currentElo}, ${delta}, NOW(), 'manual', ${req.workspaceId})
+                    INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id, source_label)
+                    VALUES (gen_random_uuid(), ${id}, ${oldElo}, ${currentElo}, ${delta}, NOW(), 'manual', ${req.workspaceId}, 'Aggiornamento Manuale')
                 `;
             }
         }
@@ -3643,18 +3644,19 @@ async function applyTeamMatchdayElo(matchdayId, workspaceId) {
     `;
     if (matchdayResult.length === 0) return;
     const matchday = matchdayResult[0];
-    const sourceLabel = `Giornata ${matchday.name} (${matchday.date})`;
+    const dateFormatted = new Date(matchday.date).toLocaleDateString('it-IT');
+    const sourceLabel = `Giornata ${matchday.name} (${dateFormatted})`;
 
     // Revert existing ELO changes for this matchday
     const oldHistory = await sql`
         SELECT player_id, delta
         FROM elo_history
-        WHERE event_id = ${matchdayId} AND type = 'team_tournament_matchday'
+        WHERE event_id = ${matchdayId} AND type = 'team_tournament_matchday' AND workspace_id = ${workspaceId}
     `;
     for (const row of oldHistory) {
-        await sql`UPDATE players SET current_elo = current_elo - ${row.delta} WHERE id = ${row.player_id}`;
+        await sql`UPDATE players SET current_elo = current_elo - ${row.delta} WHERE id = ${row.player_id} AND workspace_id = ${workspaceId}`;
     }
-    await sql`DELETE FROM elo_history WHERE event_id = ${matchdayId} AND type = 'team_tournament_matchday'`;
+    await sql`DELETE FROM elo_history WHERE event_id = ${matchdayId} AND type = 'team_tournament_matchday' AND workspace_id = ${workspaceId}`;
 
     // Process all sub-matches
     const matches = await sql`
@@ -3681,7 +3683,7 @@ async function applyTeamMatchdayElo(matchdayId, workspaceId) {
     const getElo = async (id) => {
         if (!id) return 1500;
         if (currentElos.has(id)) return currentElos.get(id);
-        const rows = await sql`SELECT current_elo FROM players WHERE id = ${id}`;
+        const rows = await sql`SELECT current_elo FROM players WHERE id = ${id} AND workspace_id = ${workspaceId}`;
         const elo = rows.length > 0 ? Number(rows[0].current_elo) : 1500;
         currentElos.set(id, elo);
         return elo;
@@ -3695,7 +3697,7 @@ async function applyTeamMatchdayElo(matchdayId, workspaceId) {
         const team2P1Id = await getPlayerId(m.team2_players?.[0]);
         const team2P2Id = await getPlayerId(m.team2_players?.[1]);
 
-        if (!team1P1Id && !team2P1Id) continue; // skip if no players matched
+        if (!team1P1Id || !team2P1Id) continue; // skip if any team is missing players completely
 
         const t1p1Elo = await getElo(team1P1Id);
         const t1p2Elo = team1P2Id ? await getElo(team1P2Id) : t1p1Elo;
@@ -3730,19 +3732,19 @@ async function applyTeamMatchdayElo(matchdayId, workspaceId) {
     for (const [playerId, totalDelta] of playerDeltas.entries()) {
         if (Math.abs(totalDelta) < 0.01) continue;
         
-        const row = await sql`SELECT current_elo FROM players WHERE id = ${playerId}`;
+        const row = await sql`SELECT current_elo FROM players WHERE id = ${playerId} AND workspace_id = ${workspaceId}`;
         if (row.length === 0) continue;
         
         const eloBefore = Number(row[0].current_elo);
         const eloAfter = eloBefore + totalDelta;
 
-        await sql`UPDATE players SET current_elo = ${eloAfter} WHERE id = ${playerId}`;
+        await sql`UPDATE players SET current_elo = ${eloAfter} WHERE id = ${playerId} AND workspace_id = ${workspaceId}`;
         
         await sql`
             INSERT INTO elo_history (
-                player_id, event_id, type, source_label, elo_before, elo_after, delta
+                player_id, event_id, type, source_label, elo_before, elo_after, delta, workspace_id, date
             ) VALUES (
-                ${playerId}, ${matchdayId}, 'team_tournament_matchday', ${sourceLabel}, ${eloBefore}, ${eloAfter}, ${totalDelta}
+                ${playerId}, ${matchdayId}, 'team_tournament_matchday', ${sourceLabel}, ${eloBefore}, ${eloAfter}, ${totalDelta}, ${workspaceId}, ${matchday.date}
             )
         `;
     }
@@ -5036,8 +5038,8 @@ app.post('/api/tournaments/bulk-matches', async (req, res) => {
             for (const [playerId, { oldElo, totalDelta }] of playerEloChanges) {
                 const newElo = oldElo + totalDelta;
                 await sql`
-                    INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id)
-                    VALUES (${tournamentId}, ${playerId}, ${oldElo}, ${newElo}, ${totalDelta}, ${tournament.date}, 'tournament', ${req.workspaceId})
+                    INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id, source_label)
+                    VALUES (${tournamentId}, ${playerId}, ${oldElo}, ${newElo}, ${totalDelta}, ${tournament.date}, 'tournament', ${req.workspaceId}, ${tournament.name})
                 `;
 
                 const currentGlobalElo = (await sql`SELECT current_elo FROM players WHERE id = ${playerId} AND workspace_id = ${req.workspaceId}`)[0].current_elo;
@@ -5228,8 +5230,8 @@ app.put('/api/tournaments/complete', async (req, res) => {
         for (const [playerId, { oldElo, totalDelta }] of playerEloChanges) {
             const newElo = oldElo + totalDelta;
             await sql`
-                INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id)
-                VALUES (${tournamentId}, ${playerId}, ${oldElo}, ${newElo}, ${totalDelta}, ${tournamentDate}, 'tournament', ${req.workspaceId})
+                INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id, source_label)
+                VALUES (${tournamentId}, ${playerId}, ${oldElo}, ${newElo}, ${totalDelta}, ${tournamentDate}, 'tournament', ${req.workspaceId}, ${tournament.name})
             `;
 
             const currentGlobalElo = (await sql`SELECT current_elo FROM players WHERE id = ${playerId} AND workspace_id = ${req.workspaceId}`)[0].current_elo;

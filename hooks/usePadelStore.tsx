@@ -67,6 +67,7 @@ interface PadelStore {
     getTeamTournamentPlayerStats: (rootTournamentId: string) => Promise<TeamTournamentPlayerStatsRow[]>;
     getTeamTournamentFixtures: (rootTournamentId: string) => Promise<TeamTournamentFixture[]>;
     updateTournament: (tournamentId: string, updatedData: Pick<Tournament, 'club' | 'date' | 'name'>) => Promise<void>;
+    completeTournament: (tournamentId: string) => Promise<void>;
     deleteTournament: (tournamentId: string) => Promise<void>;
     getPlayerById: (id: string) => Player | undefined;
 }
@@ -346,6 +347,14 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         await fetchData();
     };
     
+    const completeTournament = async (tournamentId: string): Promise<void> => {
+        await apiRequest(`/api/tournaments/complete`, {
+            method: 'PUT',
+            body: JSON.stringify({ tournamentId }),
+        });
+        await fetchData();
+    };
+    
     const deleteTournament = async (tournamentId: string): Promise<void> => {
         await apiRequest(`/api/tournaments`, {
             method: 'DELETE',
@@ -386,6 +395,7 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             getTeamTournamentPlayerStats,
             getTeamTournamentFixtures,
             updateTournament,
+            completeTournament,
             deleteTournament,
             getPlayerById
         }}>

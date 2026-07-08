@@ -9,8 +9,13 @@ import HIGSegmentedControl from '../components/ui/HIGSegmentedControl.tsx';
 import PlayerProfileModal from '../components/PlayerProfileModal.tsx';
 import { printPlayerProfiles } from '../services/printService.ts';
 import EloPlaytomicInput from '../components/EloPlaytomicInput.tsx';
+import { useAuth } from '../hooks/useAuth.tsx';
+import { usePlayerSimilarity, SimilarityResult } from '../hooks/usePlayerSimilarity.ts';
+import PlayerSimilarityModal from '../components/PlayerSimilarityModal.tsx';
 
 const PlayersPage: React.FC = () => {
+    const { workspaceId } = useAuth();
+    const { searchSimilarPlayer, isSearching } = usePlayerSimilarity(workspaceId);
     const { players, matches, tournaments, eloHistory, addPlayer, deletePlayer, updatePlayerAndElo, loading } = usePadelStore();
     
     // Sort State
@@ -22,7 +27,12 @@ const PlayersPage: React.FC = () => {
     const [name, setName] = useState('');
     const [surname, setSurname] = useState('');
     const [position, setPosition] = useState<FieldPosition>(FieldPosition.Indifferente);
+    const [addElo, setAddElo] = useState<string>('1500');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Similarity Modal State
+    const [similarityCandidates, setSimilarityCandidates] = useState<SimilarityResult[]>([]);
+    const [isSimilarityModalOpen, setIsSimilarityModalOpen] = useState(false);
 
     // Edit Player Sheet State
     const [playerToEdit, setPlayerToEdit] = useState<Player | null>(null);
@@ -54,6 +64,23 @@ const PlayersPage: React.FC = () => {
           )
         : false;
 
+    const executeAddPlayer = async () => {
+        setIsSubmitting(true);
+        try {
+            await addPlayer(name.trim(), surname.trim(), position, parseFloat(addElo));
+            setName('');
+            setSurname('');
+            setPosition(FieldPosition.Indifferente);
+            setAddElo('1500');
+            setIsAddSheetOpen(false);
+            setIsSimilarityModalOpen(false);
+        } catch (error) {
+            console.error("Failed to add player:", error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     const handleAddSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const nName = name.trim();
@@ -67,17 +94,12 @@ const PlayersPage: React.FC = () => {
                 alert("Attenzione: Esiste già un giocatore con questo nome e cognome!");
                 return;
             }
-            setIsSubmitting(true);
-            try {
-                await addPlayer(nName, nSurname, position);
-                setName('');
-                setSurname('');
-                setPosition(FieldPosition.Indifferente);
-                setIsAddSheetOpen(false);
-            } catch (error) {
-                console.error("Failed to add player:", error);
-            } finally {
-                setIsSubmitting(false);
+            const similar = await searchSimilarPlayer(nName, nSurname);
+            if (similar.length > 0) {
+                setSimilarityCandidates(similar);
+                setIsSimilarityModalOpen(true);
+            } else {
+                await executeAddPlayer();
             }
         }
     };
@@ -248,6 +270,16 @@ const PlayersPage: React.FC = () => {
                             </select>
                         </div>
                     </div>
+                    
+                    <HIGListSection header="Impostazioni ELO">
+                        <div className="px-4 py-4 border-b" style={{ borderColor: 'var(--ios-separator)' }}>
+                            <EloPlaytomicInput
+                                elo={parseFloat(addElo) || 0}
+                                onEloChange={(elo) => setAddElo(elo.toString())}
+                            />
+                        </div>
+                    </HIGListSection>
+
                     <div className="px-4">
                         <HIGButton type="submit" variant="filled" fullWidth disabled={isSubmitting || !name || !surname}>
                             {isSubmitting ? 'Salvataggio...' : 'Aggiungi Giocatore'}
@@ -351,6 +383,21 @@ const PlayersPage: React.FC = () => {
             </HIGSheet>
 
             <PlayerProfileModal player={profilePlayer} onClose={() => setProfilePlayer(null)} />
+
+            <PlayerSimilarityModal
+                isOpen={isSimilarityModalOpen}
+                onClose={() => setIsSimilarityModalOpen(false)}
+                candidates={similarityCandidates}
+                inputName={name}
+                inputSurname={surname}
+                onCreateNew={executeAddPlayer}
+                onSelect={(selectedPlayer) => {
+                    setIsSimilarityModalOpen(false);
+                    setIsAddSheetOpen(false);
+                    const p = players.find(x => x.id === selectedPlayer.id);
+                    if (p) setPlayerToEdit(p);
+                }}
+            />
         </HIGList>
     );
 };

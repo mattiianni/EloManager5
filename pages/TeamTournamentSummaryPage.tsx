@@ -28,7 +28,7 @@ const TeamTournamentSummaryPage: React.FC<TeamTournamentSummaryPageProps> = ({
     rootTournamentId,
     clearNavigationState,
 }) => {
-    const { tournaments, getTeamTournamentConfig, getTeamTournamentTeams, getTeamTournamentMatchdays, getTeamTournamentFixtures } = usePadelStore();
+    const { tournaments, getTeamTournamentConfig, getTeamTournamentTeams, getTeamTournamentMatchdays, getTeamTournamentFixtures, players, eloHistory } = usePadelStore();
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -169,6 +169,42 @@ const TeamTournamentSummaryPage: React.FC<TeamTournamentSummaryPageProps> = ({
         // Safety fallback.
         return out.length > 0 ? out.sort((a, b) => a.pos - b.pos) : standingsRR.map((r, idx) => ({ pos: idx + 1, teamNumber: r.teamNumber, teamName: r.teamName }));
     }, [config, standingsRR, fixtureByPhaseSlot, matchdayByTournamentDayId, teamNameByNumber]);
+
+    const playerEloStats = useMemo(() => {
+        if (!teams.length || !matchdays.length || !players.length || !eloHistory.length) return [];
+        
+        // Find all matchday IDs for this tournament
+        const matchdayIds = new Set(matchdays.map(m => m.id));
+
+        // Map teams to get players and their team
+        const playerToTeamMap = new Map<string, string>();
+        teams.forEach(t => {
+            t.players.forEach(p => {
+                if (p.id) playerToTeamMap.set(p.id, t.name);
+            });
+        });
+
+        // Filter players that belong to any team
+        const registeredPlayers = players.filter(p => playerToTeamMap.has(p.id));
+
+        // For each player, find all eloHistory entries for this tournament's matchdays
+        const stats = registeredPlayers.map(p => {
+            const history = eloHistory.filter(e => e.playerId === p.id && matchdayIds.has(e.eventId));
+            const matchesPlayed = history.length;
+            const deltaVar = history.reduce((sum, h) => sum + h.delta, 0);
+            
+            return {
+                player: p,
+                teamName: playerToTeamMap.get(p.id),
+                matchesPlayed,
+                eloVar: deltaVar
+            };
+        });
+
+        // Filter out players with 0 matches if preferred, or keep them. Let's keep them and sort.
+        // Sort by variation desc
+        return stats.sort((a, b) => b.eloVar - a.eloVar);
+    }, [teams, matchdays, players, eloHistory]);
 
     const playoffFixturesSorted = useMemo(() => {
         return fixtures
@@ -357,6 +393,48 @@ const TeamTournamentSummaryPage: React.FC<TeamTournamentSummaryPageProps> = ({
                                     <div className="flex-1 ml-3">{r.teamName}</div>
                                 </div>
                             ))}
+                        </div>
+                    </Card>
+
+                    <Card>
+                        <div className="text-xl font-bold text-gray-900 dark:text-white">Rendimento Individuale ELO</div>
+                        <div className="mt-3 overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="border-b-2 border-gray-300 dark:border-gray-600">
+                                        <th className="py-2 pr-2 text-sm font-semibold text-gray-900 dark:text-gray-100">#</th>
+                                        <th className="py-2 pr-2 text-sm font-semibold text-gray-900 dark:text-gray-100">Giocatore</th>
+                                        <th className="py-2 px-1 text-center text-sm font-semibold text-gray-900 dark:text-gray-100">Team</th>
+                                        <th className="py-2 px-1 text-center text-sm font-semibold text-gray-900 dark:text-gray-100" title="Partite (Giornate) Giocate">G</th>
+                                        <th className="py-2 pl-2 text-right text-sm font-semibold text-gray-900 dark:text-gray-100">Var. ELO</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {playerEloStats.map((stat, idx) => (
+                                        <tr 
+                                            key={stat.player.id} 
+                                            className="border-t border-gray-200 dark:border-gray-700"
+                                        >
+                                            <td className="py-2 pr-2 text-sm">{idx + 1}</td>
+                                            <td className="py-2 pr-2 text-sm font-medium">
+                                                {stat.player.name} {stat.player.surname}
+                                            </td>
+                                            <td className="py-2 px-1 text-center text-sm truncate max-w-[100px]" title={stat.teamName}>
+                                                {stat.teamName}
+                                            </td>
+                                            <td className="py-2 px-1 text-center text-sm">{stat.matchesPlayed}</td>
+                                            <td className={`py-2 pl-2 text-right text-sm font-bold ${stat.eloVar > 0 ? 'text-green-500' : stat.eloVar < 0 ? 'text-red-500' : 'text-gray-500'}`}>
+                                                {stat.eloVar > 0 ? '+' : ''}{stat.eloVar.toFixed(2)}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {playerEloStats.length === 0 && (
+                                        <tr>
+                                            <td colSpan={5} className="py-4 text-center text-sm text-gray-500">Nessun dato disponibile</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                     </Card>
 
