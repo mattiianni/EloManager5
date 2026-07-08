@@ -1,3 +1,9 @@
+## v5.0.2
+- Mostrati i punteggi per singolo set anziché il totale games in Dashboard e Profilo Giocatore
+- Aggiunta validazione (minimo 2 lettere per nome e cognome) in creazione e modifica giocatore
+- Rimossi giocatori senza nome dal database di produzione
+- Fixati dettagli minori nella visualizzazione dei tabelloni
+
 ## v5.0.1 — 2026-07-09
 ### Modifiche
 - Fix: rimosso l'orario 00:00:00 dalla data dell'ultima giornata nella dashboard.
