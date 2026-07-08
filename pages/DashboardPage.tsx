@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { usePadelStore } from '../hooks/usePadelStore.tsx';
 import { SFIcon } from '../components/ui/SFIcon.tsx';
 import { HIGListSection, HIGListRow } from '../components/ui/HIGList.tsx';
@@ -6,6 +6,7 @@ import PlayerProfileModal from '../components/PlayerProfileModal.tsx';
 import { Player, TournamentType } from '../types.ts';
 import { groupMatchesByPlayerSets } from '../services/beatTheBoxService.ts';
 import { printPlayerProfiles } from '../services/printService.ts';
+import PlayerPrintModal from '../components/PlayerPrintModal.tsx';
 
 interface DashboardPageProps {
     onNavigateToTournaments: (tournamentId: string) => void;
@@ -13,12 +14,22 @@ interface DashboardPageProps {
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments }) => {
     const { players, matches, tournaments, eloHistory, getPlayerById } = usePadelStore();
-    const [profilePlayer, setProfilePlayer] = React.useState<Player | null>(null);
+    const [profilePlayer, setProfilePlayer] = useState<Player | null>(null);
+    const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
     const stats = useMemo(() => {
         const activePlayers = players.length;
         const totalMatches = matches.length;
-        const completedTournaments = tournaments.filter(t => t.status === 'completed').length;
+        // "Giornate" = solo le giornate di gioco completate (non i tornei root dei team tournament, non i tornei stand-alone non completati)
+        // Un torneo a squadre root ha teamTournamentRootId === id e non ha giornataName
+        // Una giornata di un torneo a squadre ha teamTournamentRootId !== id
+        // Un torneo normale (TPRA, Americano, ecc.) NON ha teamTournamentRootId
+        const completedTournaments = tournaments.filter(t => {
+            if (t.status !== 'completed') return false;
+            // Escludi il torneo root dei team tournament (è il "contenitore", non una giornata di gioco)
+            if (t.teamTournamentRootId && t.teamTournamentRootId === t.id) return false;
+            return true;
+        }).length;
         let avgElo = 0;
         if (players.length > 0) {
             const sorted = [...players].sort((a, b) => b.currentElo - a.currentElo);
@@ -168,7 +179,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments }
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span>Top 5 Giocatori</span>
                         <button
-                            onClick={() => printPlayerProfiles(players.map(p => p.id), players, matches, eloHistory, tournaments)}
+                            onClick={() => setIsPrintModalOpen(true)}
                             disabled={players.length === 0}
                             style={{
                                 color: 'var(--ios-systemBlue)',
@@ -286,6 +297,17 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments }
             </HIGListSection>
 
             <PlayerProfileModal player={profilePlayer} onClose={() => setProfilePlayer(null)} />
+            <PlayerPrintModal
+                isOpen={isPrintModalOpen}
+                onClose={() => setIsPrintModalOpen(false)}
+                players={players}
+                onPrintAll={() => {
+                    printPlayerProfiles(players.map(p => p.id), players, matches, eloHistory, tournaments);
+                }}
+                onPrintSelected={(selectedIds) => {
+                    printPlayerProfiles(selectedIds, players, matches, eloHistory, tournaments);
+                }}
+            />
         </div>
     );
 };

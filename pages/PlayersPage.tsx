@@ -8,18 +8,21 @@ import { HIGSheet } from '../components/ui/HIGSheet.tsx';
 import HIGSegmentedControl from '../components/ui/HIGSegmentedControl.tsx';
 import PlayerProfileModal from '../components/PlayerProfileModal.tsx';
 import { printPlayerProfiles } from '../services/printService.ts';
+import PlayerPrintModal from '../components/PlayerPrintModal.tsx';
 import EloPlaytomicInput from '../components/EloPlaytomicInput.tsx';
 import { useAuth } from '../hooks/useAuth.tsx';
 import { usePlayerSimilarity, SimilarityResult } from '../hooks/usePlayerSimilarity.ts';
 import PlayerSimilarityModal from '../components/PlayerSimilarityModal.tsx';
 
 const PlayersPage: React.FC = () => {
-    const { workspaceId } = useAuth();
+    const { workspace } = useAuth();
+    const workspaceId = workspace?.id;
     const { searchSimilarPlayer, isSearching } = usePlayerSimilarity(workspaceId);
     const { players, matches, tournaments, eloHistory, addPlayer, deletePlayer, updatePlayerAndElo, loading } = usePadelStore();
     
     // Sort State
     const [sortIndex, setSortIndex] = useState(0); // 0 = Name, 1 = Surname, 2 = ELO
+    const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
     const sortOptions = ['Nome', 'Cognome', 'ELO'];
 
     // Add Player Sheet State
@@ -170,7 +173,7 @@ const PlayersPage: React.FC = () => {
                 <div className="flex w-full sm:w-auto gap-2">
                     <HIGButton 
                         variant="gray"
-                        onClick={() => printPlayerProfiles(players.map(p => p.id), players, matches, eloHistory, tournaments)}
+                        onClick={() => setIsPrintModalOpen(true)}
                         disabled={loading || players.length === 0}
                         className="flex-1 sm:flex-none"
                     >
@@ -396,6 +399,18 @@ const PlayersPage: React.FC = () => {
                     setIsAddSheetOpen(false);
                     const p = players.find(x => x.id === selectedPlayer.id);
                     if (p) setPlayerToEdit(p);
+                }}
+            />
+
+            <PlayerPrintModal
+                isOpen={isPrintModalOpen}
+                onClose={() => setIsPrintModalOpen(false)}
+                players={players}
+                onPrintAll={() => {
+                    printPlayerProfiles(players.map(p => p.id), players, matches, eloHistory, tournaments);
+                }}
+                onPrintSelected={(selectedIds) => {
+                    printPlayerProfiles(selectedIds, players, matches, eloHistory, tournaments);
                 }}
             />
         </HIGList>

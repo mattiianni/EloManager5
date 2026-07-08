@@ -1040,7 +1040,7 @@ app.get('/api/admin/workspaces', requireAdmin, async (req, res) => {
         const workspaces = await sql`
             SELECT w.*,
                    (SELECT COUNT(*) FROM players WHERE workspace_id = w.id) as player_count,
-                   (SELECT COUNT(*) FROM tournaments WHERE workspace_id = w.id) as tournament_count,
+                   (SELECT COUNT(DISTINCT COALESCE(team_tournament_root_id::text, NULLIF(giornata_name, ''), id::text)) FROM tournaments WHERE workspace_id = w.id) as tournament_count,
                    (SELECT COUNT(*) FROM access_codes WHERE workspace_id = w.id AND is_active = true) as active_codes
             FROM workspaces w
             ORDER BY w.created_at DESC
@@ -1292,6 +1292,137 @@ app.post('/api/admin/recalculate-elos', requireAdmin, async (req, res) => {
     }
 });
 
+// POST /api/admin/recalculate-elos-full - Full ELO recalculation: reset all + replay all matches chronologically
+app.post('/api/admin/recalculate-elos-full', requireAdmin, async (req, res) => {
+    try {
+        // 1. Reset all players to initial_elo
+        await sql`UPDATE players SET current_elo = initial_elo`;
+
+        // 2. Clear all elo_history
+        await sql`DELETE FROM elo_history`;
+
+        // 3. Fetch normal matches
+        const normalMatches = await sql`
+            SELECT m.id, m.date, m.team1_p1_id, m.team1_p2_id, m.team2_p1_id, m.team2_p2_id, m.winner, m.tournament_id, t.workspace_id, t.name as tournament_name
+            FROM matches m
+            JOIN tournaments t ON m.tournament_id = t.id
+            WHERE m.winner IS NOT NULL
+            ORDER BY m.date ASC
+        `;
+
+        // 4. Fetch team tournament matches
+        const teamMatches = await sql`
+            SELECT tm.id, tm.team1_players, tm.team2_players, tm.winner as team_winner, tm.matchday_id, md.date, t.workspace_id, t.name as tournament_name, md.tournament_day_id as tournament_id
+            FROM team_tournament_matchday_matches tm
+            JOIN team_tournament_matchdays md ON tm.matchday_id = md.id
+            JOIN tournaments t ON md.tournament_day_id = t.id
+            WHERE tm.winner IS NOT NULL AND tm.cancelled = FALSE
+            ORDER BY md.date ASC
+        `;
+
+        // 5. Merge and sort all matches chronologically
+        const allMatches = [
+            ...normalMatches.map(m => ({ ...m, isTeamMatch: false, sortDate: new Date(m.date) })),
+            ...teamMatches.map(m => ({ ...m, isTeamMatch: true, sortDate: new Date(m.date) })),
+        ].sort((a, b) => a.sortDate - b.sortDate);
+
+        const kFactor = 16;
+        const eloCache = {}; // player_id -> current_elo
+
+        // Preload all players for name-based lookup
+        const allPlayersRes = await sql`SELECT id, name, surname, current_elo, workspace_id FROM players`;
+        const nameToIdMap = {}; // workspace_id -> "name surname" -> id
+        
+        for (const p of allPlayersRes) {
+            eloCache[p.id] = parseFloat(p.current_elo);
+            if (!nameToIdMap[p.workspace_id]) nameToIdMap[p.workspace_id] = {};
+            const key = `${p.name.trim().toLowerCase()} ${p.surname.trim().toLowerCase()}`;
+            nameToIdMap[p.workspace_id][key] = p.id;
+        }
+
+        const getElo = async (id) => {
+            return eloCache[id] !== undefined ? eloCache[id] : null;
+        };
+
+        const extractIds = (arr, wsId) => (arr || []).map(item => {
+            if (!item) return null;
+            if (typeof item === 'string') return item;
+            if (typeof item === 'object') {
+                if (item.id) return item.id;
+                // Fallback to name+surname lookup
+                if (item.name && item.surname && nameToIdMap[wsId]) {
+                    const key = `${item.name.trim().toLowerCase()} ${item.surname.trim().toLowerCase()}`;
+                    if (nameToIdMap[wsId][key]) return nameToIdMap[wsId][key];
+                }
+            }
+            return null;
+        }).filter(Boolean);
+
+        let processed = 0;
+        for (const match of allMatches) {
+            let team1Ids, team2Ids, score1;
+
+            if (match.isTeamMatch) {
+                team1Ids = extractIds(match.team1_players, match.workspace_id);
+                team2Ids = extractIds(match.team2_players, match.workspace_id);
+                if (match.team_winner === 'team1') score1 = 1;
+                else if (match.team_winner === 'team2') score1 = 0;
+                else if (match.team_winner === 'draw') score1 = 0.5;
+                else continue;
+            } else {
+                team1Ids = [match.team1_p1_id, match.team1_p2_id].filter(Boolean);
+                team2Ids = [match.team2_p1_id, match.team2_p2_id].filter(Boolean);
+                if (match.winner === 'team1') score1 = 1;
+                else if (match.winner === 'team2') score1 = 0;
+                else if (match.winner === 'draw') score1 = 0.5;
+                else continue;
+            }
+
+            if (team1Ids.length === 0 || team2Ids.length === 0) continue;
+
+            const validT1 = [], validT2 = [];
+            for (const id of team1Ids) { if (await getElo(id) !== null) validT1.push(id); }
+            for (const id of team2Ids) { if (await getElo(id) !== null) validT2.push(id); }
+            if (validT1.length === 0 || validT2.length === 0) continue;
+
+            const t1Avg = validT1.reduce((s, id) => s + eloCache[id], 0) / validT1.length;
+            const t2Avg = validT2.reduce((s, id) => s + eloCache[id], 0) / validT2.length;
+
+            const expected1 = 1 / (1 + Math.pow(10, (t2Avg - t1Avg) / 400));
+            const delta1 = kFactor * (score1 - expected1);
+            const delta2 = kFactor * ((1 - score1) - (1 - expected1));
+
+            const eventId = match.isTeamMatch ? match.matchday_id : match.id;
+            const type = match.isTeamMatch ? 'team_tournament_matchday' : 'tournament';
+            const dateStr = match.sortDate.toISOString();
+
+            for (const id of validT1) {
+                const oldElo = eloCache[id];
+                const newElo = oldElo + delta1;
+                await sql`UPDATE players SET current_elo = ${newElo} WHERE id = ${id}`;
+                await sql`INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id, source_label)
+                    VALUES (${eventId}, ${id}, ${oldElo}, ${newElo}, ${delta1}, ${dateStr}, ${type}, ${match.workspace_id}, ${match.tournament_name})`;
+                eloCache[id] = newElo;
+            }
+            for (const id of validT2) {
+                const oldElo = eloCache[id];
+                const newElo = oldElo + delta2;
+                await sql`UPDATE players SET current_elo = ${newElo} WHERE id = ${id}`;
+                await sql`INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id, source_label)
+                    VALUES (${eventId}, ${id}, ${oldElo}, ${newElo}, ${delta2}, ${dateStr}, ${type}, ${match.workspace_id}, ${match.tournament_name})`;
+                eloCache[id] = newElo;
+            }
+            processed++;
+        }
+
+        logger.info('Full ELO recalculation completed', { totalMatches: allMatches.length, processed });
+        res.json({ success: true, totalMatches: allMatches.length, processed });
+    } catch (error) {
+        logger.error('Failed to run full ELO recalculation', error);
+        res.status(500).json({ message: 'Errore nel ricalcolo ELO completo', error: error.message });
+    }
+});
+
 // GET /api/admin/audit-logs - Get audit logs
 app.get('/api/admin/audit-logs', requireAdmin, async (req, res) => {
     try {
@@ -1402,9 +1533,28 @@ app.get('/api/data', async (req, res) => {
         await ensureTablesExist();
 
         const wsId = req.workspaceId;
-        const [playersResult, matchesResult, tournamentsResult, eloHistoryResult] = await Promise.all([
-            sql`SELECT * FROM players WHERE workspace_id = ${wsId};`,
-            sql`SELECT id, date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id FROM matches WHERE workspace_id = ${wsId} ORDER BY created_at ASC, date ASC;`,
+        const [playersResult, deletedPlayersResult, matchesResult, teamMatchesResult, tournamentsResult, eloHistoryResult] = await Promise.all([
+            sql`SELECT * FROM players WHERE workspace_id = ${wsId} AND (is_deleted = FALSE OR is_deleted IS NULL);`,
+            sql`SELECT id, name, surname FROM players WHERE workspace_id = ${wsId} AND is_deleted = TRUE;`,
+            sql`
+                SELECT id, date, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner, tournament_id 
+                FROM matches 
+                WHERE workspace_id = ${wsId}
+            `,
+            sql`
+                SELECT 
+                    tm.id, 
+                    md.date,
+                    tm.team1_players,
+                    tm.team2_players,
+                    tm.sets, 
+                    tm.winner, 
+                    md.tournament_day_id as tournament_id
+                FROM team_tournament_matchday_matches tm
+                JOIN team_tournament_matchdays md ON tm.matchday_id = md.id
+                JOIN tournaments t ON md.tournament_day_id = t.id
+                WHERE t.workspace_id = ${wsId} AND tm.cancelled = FALSE AND tm.winner IS NOT NULL
+            `,
             sql`
                 SELECT 
                     t.id, t.name, t.type, t.date, t.club, t.status, t.americano_fields, t.americano_scoring_type, t.final_standings, t.giornata_name, t.num_gironi,
@@ -1435,6 +1585,14 @@ app.get('/api/data', async (req, res) => {
             currentElo: p.current_elo,
         }));
 
+        // Ghost players: soft-deleted but needed for name resolution in old matches
+        const ghostPlayers = deletedPlayersResult.map(p => ({
+            id: p.id,
+            name: p.name,
+            surname: p.surname,
+            isDeleted: true,
+        }));
+
         const tournaments = tournamentsResult.map(t => ({
             id: t.id,
             name: t.name,
@@ -1457,16 +1615,50 @@ app.get('/api/data', async (req, res) => {
             teamTournamentPhase: t.team_tournament_phase || null,
         }));
 
-        const matches = matchesResult.map(m => ({
+        const nameToIdMap = {};
+        for (const p of [...players, ...ghostPlayers]) {
+            const key = `${p.name.trim().toLowerCase()} ${p.surname.trim().toLowerCase()}`;
+            nameToIdMap[key] = p.id;
+        }
+
+        const extractId = (item) => {
+            if (!item) return null;
+            if (typeof item === 'string') return item;
+            if (typeof item === 'object') {
+                if (item.id) return item.id;
+                if (item.name && item.surname) {
+                    const key = `${item.name.trim().toLowerCase()} ${item.surname.trim().toLowerCase()}`;
+                    if (nameToIdMap[key]) return nameToIdMap[key];
+                }
+            }
+            return null;
+        };
+
+        const normalMatches = matchesResult.map(m => ({
             id: m.id,
             date: m.date,
-            team1: [m.team1_p1_id, m.team1_p2_id],
-            team2: [m.team2_p1_id, m.team2_p2_id],
+            team1: [m.team1_p1_id, m.team1_p2_id].filter(Boolean),
+            team2: [m.team2_p1_id, m.team2_p2_id].filter(Boolean),
             sets: m.sets,
             winner: m.winner,
             tournamentId: m.tournament_id,
         }));
-        
+
+        const teamMatches = teamMatchesResult.map(m => {
+            const team1 = (m.team1_players || []).map(extractId).filter(Boolean);
+            const team2 = (m.team2_players || []).map(extractId).filter(Boolean);
+            return {
+                id: m.id,
+                date: m.date,
+                team1,
+                team2,
+                sets: m.sets,
+                winner: m.winner,
+                tournamentId: m.tournament_id,
+            };
+        });
+
+        const matches = [...normalMatches, ...teamMatches].sort((a, b) => new Date(a.date) - new Date(b.date));
         
         const eloHistory = eloHistoryResult.map(h => ({
             eventId: h.event_id,
@@ -1479,7 +1671,7 @@ app.get('/api/data', async (req, res) => {
             sourceLabel: h.source_label
         }));
 
-        res.json({ players, matches, tournaments, eloHistory });
+        res.json({ players, ghostPlayers, matches, tournaments, eloHistory });
     } catch (error) {
         logger.error('Failed to fetch data', error);
         res.status(500).json({ message: 'Failed to fetch data', error: error.message });
@@ -1574,7 +1766,7 @@ app.get('/api/players/search', async (req, res) => {
         const players = await sql`
             SELECT id, name, surname, current_elo 
             FROM players 
-            WHERE workspace_id = ${workspaceId}
+            WHERE workspace_id = ${workspaceId} AND (is_deleted = FALSE OR is_deleted IS NULL)
         `;
 
         const candidates = [];
@@ -1731,10 +1923,24 @@ app.delete('/api/players', async (req, res) => {
             return res.status(400).json({ message: 'Player ID is required' });
         }
         
-        // The ON DELETE CASCADE constraint will handle deleting related matches and history
-        await sql`DELETE FROM players WHERE id = ${id} AND workspace_id = ${req.workspaceId};`;
+        // Soft delete the player
+        await sql`UPDATE players SET is_deleted = TRUE WHERE id = ${id} AND workspace_id = ${req.workspaceId};`;
+        
+        // Delete their ELO history
+        await sql`DELETE FROM elo_history WHERE player_id = ${id};`;
 
-        logger.info('Giocatore eliminato con successo', { id });
+        // Remove the player from any team_tournament_teams JSONB arrays
+        await sql`
+            UPDATE team_tournament_teams
+            SET players = (
+                SELECT COALESCE(jsonb_agg(elem), '[]'::jsonb)
+                FROM jsonb_array_elements(players) elem
+                WHERE elem::text <> ${JSON.stringify(id)}::text
+            )
+            WHERE players @> ${JSON.stringify([id])}::jsonb;
+        `;
+
+        logger.info('Giocatore eliminato (soft) con successo', { id });
         res.json({ message: 'Giocatore eliminato con successo' });
     } catch (error) {
         logger.error('Failed to delete player', error);

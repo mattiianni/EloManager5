@@ -251,7 +251,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
         if (tournamentToExpand && tournaments.length > 0) {
             const tournament = tournaments.find(t => t.id === tournamentToExpand);
             if (tournament) {
-                const groupId = tournament.groupId || tournament.id;
+                const groupId = (tournament as any).groupId || tournament.id;
                 setExpandedNames(prev => new Set(prev).add(groupId));
                 setExpandedMatchdays(prev => new Set(prev).add(tournamentToExpand));
             }
@@ -1333,16 +1333,16 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                             
                                                             {expandedMatchdays.has(day.id) && (() => {
                                                                 const tournamentMatches = matches.filter(m => m.tournamentId === day.id);
+                                                                if (day.type === TournamentType.EliminazioneDiretta) {
+                                                                    return (
+                                                                        <TpraBracketView tournament={day} matches={tournamentMatches} />
+                                                                    );
+                                                                }
                                                                 if (tournamentMatches.length === 0) {
                                                                     return (
                                                                         <div className="mt-4 pt-4 border-t border-slate-200/60 dark:border-white/10 text-sm text-gray-500 italic">
                                                                             Nessuna partita registrata.
                                                                         </div>
-                                                                    );
-                                                                }
-                                                                if (day.type === TournamentType.EliminazioneDiretta) {
-                                                                    return (
-                                                                        <TpraBracketView tournament={day} matches={tournamentMatches} />
                                                                     );
                                                                 }
                                                                 return (

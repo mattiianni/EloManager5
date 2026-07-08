@@ -69,7 +69,7 @@ interface PadelStore {
     updateTournament: (tournamentId: string, updatedData: Pick<Tournament, 'club' | 'date' | 'name'>) => Promise<void>;
     completeTournament: (tournamentId: string) => Promise<void>;
     deleteTournament: (tournamentId: string) => Promise<void>;
-    getPlayerById: (id: string) => Player | undefined;
+    getPlayerById: (id: string) => Player | { id: string; name: string; surname: string; isDeleted: true } | undefined;
 }
 
 const PadelStoreContext = createContext<PadelStore | null>(null);
@@ -107,6 +107,7 @@ async function apiRequest<T>(url: string, options: RequestInit = {}): Promise<T>
 
 export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [players, setPlayers] = useState<Player[]>([]);
+    const [ghostPlayers, setGhostPlayers] = useState<{id:string;name:string;surname:string;isDeleted:true}[]>([]);
     const [matches, setMatches] = useState<Match[]>([]);
     const [tournaments, setTournaments] = useState<Tournament[]>([]);
     const [eloHistory, setEloHistory] = useState<EloHistoryEntry[]>([]);
@@ -124,6 +125,7 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             }>('/api/data');
             
             setPlayers(data.players);
+            if (data.ghostPlayers) setGhostPlayers(data.ghostPlayers);
             setMatches(data.matches);
             setTournaments(data.tournaments);
             setEloHistory(data.eloHistory);
@@ -363,7 +365,7 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         await fetchData();
     };
 
-    const getPlayerById = (id: string) => players.find(p => p.id === id);
+    const getPlayerById = (id: string) => players.find(p => p.id === id) || ghostPlayers.find(p => p.id === id);
 
     return (
         <PadelStoreContext.Provider value={{

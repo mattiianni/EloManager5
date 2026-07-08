@@ -419,13 +419,16 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  return generateRoundRobinMatches(pairs);
  }, [pairs, selectedFormat, americanoFields, americanoRounds]);
 
- // Determine available tournament formats based on number of pairs
- const getAvailableFormats = (): TournamentFormat[] => {
+    // Determine available tournament formats based on number of pairs
+    const getAvailableFormats = (): TournamentFormat[] => {
  const numPairs = pairs.length;
  
  if (numPairs === 2) {
- return ['match-singolo'];
- } else if (numPairs === 3) {
+ // Se ci sono solo 2 coppie, possono solo fare un match singolo "amichevole" (Torneo Libero)
+ return ['torneo-libero'];
+ }
+ 
+ if (numPairs === 3) {
  return []; // No buttons for 3 pairs
  } else if (numPairs === 4) {
  return ['torneotto-30', 'round-robin-finali', 'americano', 'torneo-libero', 'beat-the-box', 'eliminazione-diretta'];
@@ -442,7 +445,6 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
 
  const getFormatDisplayName = (format: TournamentFormat): string => {
  switch (format) {
- case 'match-singolo': return 'Match Singolo';
  case 'torneotto-30': return 'TorneOtto 30\'';
  case 'round-robin-finali': return 'Round Robin + Finali';
  case 'americano': return 'Americano';

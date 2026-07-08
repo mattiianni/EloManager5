@@ -58,7 +58,13 @@ const TpraBracketView: React.FC<TpraBracketViewProps> = ({
         };
 
         // Hydrate initial round with winners
-        let currentRound = initialRound.map(node => {
+        let currentRound: BracketNode[] = initialRound.map(node => {
+            // Bye nodes: the non-null team advances automatically
+            if (node.isBye) {
+                const advancingTeam = node.team1 || node.team2;
+                const autoWinner = node.team1 ? 'team1' : 'team2';
+                return { ...node, winner: autoWinner };
+            }
             let winner = node.winner;
             if (!winner && node.team1 && node.team2) {
                 winner = findMatchWinner(node.team1, node.team2);
@@ -75,6 +81,7 @@ const TpraBracketView: React.FC<TpraBracketViewProps> = ({
                 const node1 = currentRound[i];
                 const node2 = currentRound[i + 1];
 
+                // Handle bye propagation: if a node is a bye, its winner already propagated automatically above
                 const winner1 = node1.winner === 'team1' ? node1.team1 : (node1.winner === 'team2' ? node1.team2 : undefined);
                 const winner2 = node2.winner === 'team1' ? node2.team1 : (node2.winner === 'team2' ? node2.team2 : undefined);
 

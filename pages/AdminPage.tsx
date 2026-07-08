@@ -273,6 +273,26 @@ const AdminPage: React.FC = () => {
         }
     };
 
+    const [fullRecalculating, setFullRecalculating] = React.useState(false);
+    const [fullRecalcResult, setFullRecalcResult] = React.useState<{ totalMatches: number; processed: number } | null>(null);
+
+    const handleFullRecalculateElos = async () => {
+        if (!confirm('⚠️ RICALCOLO ELO COMPLETO\n\nQuesta operazione:\n1. Azzera gli ELO di TUTTI i giocatori (tutti i workspace)\n2. Cancella tutta la cronologia ELO\n3. Ripercorre TUTTE le partite in ordine cronologico\n4. Ricalcola gli ELO da zero\n\nPuò richiedere diversi minuti. Procedere?')) return;
+        setFullRecalculating(true);
+        setFullRecalcResult(null);
+        try {
+            const result = await adminApi<{ totalMatches: number; processed: number }>('/api/admin/recalculate-elos-full', {
+                method: 'POST',
+                body: JSON.stringify({}),
+            });
+            setFullRecalcResult(result);
+        } catch (error: any) {
+            alert(error.message);
+        } finally {
+            setFullRecalculating(false);
+        }
+    };
+
     const handleDeactivateCode = async (codeId: string) => {
         if (!confirm('Sei sicuro di voler disattivare questo codice?')) return;
         try {
@@ -537,6 +557,30 @@ const AdminPage: React.FC = () => {
                                         </div>
                                     </>
                                 )}
+                            </div>
+                        )}
+                    </Card>
+
+                    {/* Ricalcolo ELO COMPLETO */}
+                    <Card title="⚡ Ricalcolo ELO Completo da Zero">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                            Azzera gli ELO di <strong>tutti i giocatori</strong>, cancella tutta la cronologia e ripercorre <strong>tutte le partite</strong> (tornei normali + tornei a squadre) in ordine cronologico per ricalcolare gli ELO corretti. Si applica a <strong>tutti i workspace</strong>.
+                        </p>
+                        <div className="p-3 mb-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-lg text-xs text-amber-800 dark:text-amber-300">
+                            ⚠️ Operazione lenta (può richiedere alcuni minuti). Non usare se non necessario.
+                        </div>
+                        <button
+                            onClick={handleFullRecalculateElos}
+                            disabled={fullRecalculating}
+                            className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white rounded-lg text-sm font-medium transition-colors"
+                        >
+                            {fullRecalculating ? '⏳ Ricalcolo completo in corso...' : '🔄 Ricalcolo ELO Completo (tutti i workspace)'}
+                        </button>
+                        {fullRecalcResult !== null && (
+                            <div className="mt-3">
+                                <p className="text-sm text-green-600 dark:text-green-400 font-medium">
+                                    ✅ Completato! Processate {fullRecalcResult.processed} partite su {fullRecalcResult.totalMatches} totali.
+                                </p>
                             </div>
                         )}
                     </Card>

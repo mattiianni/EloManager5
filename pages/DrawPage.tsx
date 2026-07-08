@@ -87,7 +87,8 @@ const DrawPage: React.FC<DrawPageProps> = ({
     launchMode = null,
     clearLaunchMode
 }) => {
-    const { workspaceId } = useAuth();
+    const { workspace } = useAuth();
+    const workspaceId = workspace?.id;
     const { searchSimilarPlayer, isSearching } = usePlayerSimilarity(workspaceId);
     const {
         players,

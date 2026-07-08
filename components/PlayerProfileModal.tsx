@@ -131,7 +131,7 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
         const firstEntry = eventFirstEntry.get(firstEventId);
         const base = firstEntry ? firstEntry.eloBefore : player.initialElo;
 
-        const data: { eventIndex: number; elo: number }[] = [];
+        const data: { eventIndex: number; elo: number; sourceLabel?: string }[] = [];
         // Initial point
         data.push({ eventIndex: -1, elo: base, sourceLabel: 'Start' });
 

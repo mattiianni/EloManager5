@@ -159,7 +159,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
                 
                 let lastDelta = null;
                 if (selectedTournamentId) {
-                    let tournamentEloEntries: import('../types.ts').EloHistory[] = [];
+                    let tournamentEloEntries: import('../types.ts').EloHistoryEntry[] = [];
                     if (isTeamTournament) {
                         tournamentEloEntries = eloHistory.filter(e => 
                             e.playerId === player.id && selectedTeamTournamentMatchdayIds.includes(e.eventId)
@@ -178,7 +178,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
 
                 let displayElo = player.currentElo;
                 if (selectedTournamentId) {
-                    let tournamentEloEntries: import('../types.ts').EloHistory[] = [];
+                    let tournamentEloEntries: import('../types.ts').EloHistoryEntry[] = [];
                     if (isTeamTournament) {
                         tournamentEloEntries = eloHistory.filter(e => 
                             e.playerId === player.id && selectedTeamTournamentMatchdayIds.includes(e.eventId)
