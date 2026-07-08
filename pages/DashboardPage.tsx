@@ -6,7 +6,7 @@ import PlayerProfileModal from '../components/PlayerProfileModal.tsx';
 import { Player, TournamentType } from '../types.ts';
 import { groupMatchesByPlayerSets } from '../services/beatTheBoxService.ts';
 import { printPlayerProfiles } from '../services/printService.ts';
-import { PlayerPrintModal } from '../components/PlayerPrintModal.tsx';
+import PlayerPrintModal from '../components/PlayerPrintModal.tsx';
 
 interface DashboardPageProps {
     onNavigateToTournaments: (tournamentId: string) => void;

@@ -8,7 +8,7 @@ import { HIGSheet } from '../components/ui/HIGSheet.tsx';
 import HIGSegmentedControl from '../components/ui/HIGSegmentedControl.tsx';
 import PlayerProfileModal from '../components/PlayerProfileModal.tsx';
 import { printPlayerProfiles } from '../services/printService.ts';
-import { PlayerPrintModal } from '../components/PlayerPrintModal.tsx';
+import PlayerPrintModal from '../components/PlayerPrintModal.tsx';
 import EloPlaytomicInput from '../components/EloPlaytomicInput.tsx';
 import { useAuth } from '../hooks/useAuth.tsx';
 import { usePlayerSimilarity, SimilarityResult } from '../hooks/usePlayerSimilarity.ts';
