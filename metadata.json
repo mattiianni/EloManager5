@@ -1,0 +1,5 @@
+{
+  "name": "TEST DEPLOY",
+  "description": "A client-side application to manage Padel players, track match results, calculate ELO ratings, and organize games. It features a dark-themed UI, dynamic rankings, ELO history charts, smart pair drawing, tournament management, and AI-powered analysis.",
+  "requestFramePermissions": []
+}

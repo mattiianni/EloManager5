@@ -1,0 +1,24 @@
+import React from 'react';
+import { SFIcon } from './SFIcon';
+
+export const ChartBarIcon = ({ className }: { className?: string }) => <SFIcon name="chart.bar.fill" className={className} />;
+export const UsersIcon = ({ className }: { className?: string }) => <SFIcon name="person.2.fill" className={className} />;
+export const TableIcon = ({ className }: { className?: string }) => <SFIcon name="tablecells" className={className} />;
+export const ShuffleIcon = ({ className }: { className?: string }) => <SFIcon name="shuffle" className={className} />;
+export const TrophyIcon = ({ className }: { className?: string }) => <SFIcon name="trophy.fill" className={className} />;
+export const XIcon = ({ className }: { className?: string }) => <SFIcon name="xmark" className={className} />;
+export const MenuIcon = ({ className }: { className?: string }) => <SFIcon name="line.3.horizontal" className={className} />;
+export const TrashIcon = ({ className }: { className?: string }) => <SFIcon name="trash" className={className} />;
+export const PrintIcon = ({ className }: { className?: string }) => <SFIcon name="printer" className={className} />;
+export const SunIcon = ({ className }: { className?: string }) => <SFIcon name="sun.max.fill" className={className} />;
+export const MoonIcon = ({ className }: { className?: string }) => <SFIcon name="moon.fill" className={className} />;
+export const ArrowUpIcon = ({ className }: { className?: string }) => <SFIcon name="arrow.up" className={className} />;
+export const ArrowDownIcon = ({ className }: { className?: string }) => <SFIcon name="arrow.down" className={className} />;
+export const ArrowLeftIcon = ({ className }: { className?: string }) => <SFIcon name="arrow.left" className={className} />;
+export const ArrowStableIcon = ({ className }: { className?: string }) => <SFIcon name="minus" className={className} />;
+export const ChevronDownIcon = ({ className }: { className?: string }) => <SFIcon name="chevron.down" className={className} />;
+export const PencilIcon = ({ className }: { className?: string }) => <SFIcon name="pencil" className={className} />;
+export const StatsIcon = ({ className }: { className?: string }) => <SFIcon name="chart.bar.fill" className={className} />;
+export const HomeIcon = ({ className }: { className?: string }) => <SFIcon name="house.fill" className={className} />;
+export const InfoIcon = ({ className }: { className?: string }) => <SFIcon name="info.circle" className={className} />;
+export const MaterialIcon = ({ name, className, filled }: { name: string; className?: string; filled?: boolean }) => <SFIcon name={name} className={className} filled={filled} />;

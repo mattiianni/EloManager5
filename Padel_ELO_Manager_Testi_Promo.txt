@@ -1,0 +1,144 @@
+================================================================
+PADEL ELO MANAGER v4.1.3 - TESTI PROMOZIONALI
+================================================================
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. MESSAGGIO WHATSAPP (versione completa)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Ciao! Ti scrivo perche organizzi serate/tornei di padel e ho qualcosa che puo cambiarti la vita organizzativa.
+
+Ho sviluppato *Padel ELO Manager* - un'app che gestisce tutto il ciclo di una serata di padel: formazione coppie, tornei, tornei a squadre, classifiche e statistiche. In automatico.
+
+Cosa fa in pratica:
+- *7 formati torneo* pronti (TorneOtto, Americano, Beat the Box, Round Robin + Finali, Gironi, Torneo Libero, Torneo a Squadre)
+- *Sorteggio coppie intelligente* con 4 modalita (casuale, bilanciato forte+debole, teste di serie, manuale)
+- *Classifica ELO automatica* dopo ogni giornata - ogni partecipante ha un rating basato sulle partite disputate in coppia
+- *Profilo completo* per ognuno: statistiche, compagni e avversari frequenti, grafico andamento, storico giornate
+- *Stampa PDF* di tutto: classifiche, profili, tabelloni coppie, schede match vuote da compilare al campo
+- *Torneo a Squadre* con round robin, fase finale, riepilogo e stampe dedicate
+- *Personalizzazione per il circolo*: tornei, icona e brand possono essere adattati al vostro ambiente
+
+Il progetto e' *Value for Value*, senza scopo di lucro: ogni spesa serve solo a sostenere server e infrastruttura.
+
+Funziona direttamente nel browser, senza installare nulla: apri un link e sei dentro. Qualsiasi dispositivo, i dati sono in cloud (niente fogli Excel da perdere).
+
+Ti faccio vedere una demo quando vuoi - ci vogliono 5 minuti per capire il potenziale.
+
+Fammi sapere!
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. MESSAGGIO WHATSAPP (versione breve)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Ciao! Ho sviluppato un'app per gestire tornei di padel amatoriale: *Padel ELO Manager*.
+
+7 formati torneo, incluso il Torneo a Squadre, sorteggio coppie intelligente (bilanciato per livello), classifica ELO automatica, statistiche complete e stampa PDF. Funziona dal browser, zero installazione - apri un link e i dati sono in cloud.
+
+Ti interessa una demo veloce? 5 minuti e ti mostro tutto.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. EMAIL (versione formale per circoli/gestori)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+OGGETTO: Padel ELO Manager - La piattaforma per gestire tornei e classifiche del vostro circolo
+
+---
+
+Buongiorno,
+
+mi permetto di contattarvi perche ho sviluppato una piattaforma pensata specificamente per i circoli che organizzano serate e tornei di padel amatoriale: Padel ELO Manager.
+
+IL PROBLEMA CHE RISOLVE
+
+Organizzare tornei regolari comporta sempre le stesse difficolta: classifiche tenute a mano su Excel, sorteggi delle coppie sbilanciati, formati torneo sempre uguali, risultati che si perdono dopo ogni serata. I partecipanti non hanno visibilita sul proprio andamento e l'organizzatore perde tempo in attivita ripetitive.
+
+COSA FA PADEL ELO MANAGER
+
+L'app gestisce l'intero ciclo di una serata di padel, dalla formazione delle coppie alla stampa dei risultati:
+
+- 7 FORMATI TORNEO PRONTI ALL'USO: TorneOtto 30' (4 coppie, round robin), Americano (fino a 10+ coppie su 1-4 campi, compagno variabile), Round Robin + Finali, Torneo Libero, Gironi + Fase Finale, Beat the Box e Torneo a Squadre. Ogni formato ha regole, calcoli e stampe dedicate.
+
+- SORTEGGIO INTELLIGENTE DELLE COPPIE: 4 modalita - casuale, bilanciato per ELO (forte+debole per partite equilibrate), teste di serie, manuale. Coppie equilibrate in un click.
+
+- SISTEMA ELO PROFESSIONALE: lo stesso algoritmo di rating usato negli scacchi, adattato al padel in coppia. Dopo ogni partita coppia vs coppia, il rating individuale si aggiorna automaticamente. Calcolo basato sul K=16 universale per garantire integrità matematica, ed ELO isolato per serie di tornei.
+
+- PROFILO COMPLETO: per ogni partecipante - partite in coppia vinte/perse, compagni e avversari frequenti con percentuali di vittoria, grafico andamento ELO, storico giornata per giornata, form ultime 5 partite.
+
+- 20+ STATISTICHE AVANZATE: win rate, game ratio, streak migliore, upset tracking (vittorie a sorpresa della coppia sfavorita), premi simbolici (MVP, Comeback, Stabilita).
+
+- 12 FUNZIONI DI STAMPA PDF: classifiche, profili individuali (uno per pagina A4), grafici ELO in landscape, tabelloni coppie, schede match vuote per la compilazione al campo, report completi post-torneo, calendario e riepilogo torneo a squadre.
+
+- PERSONALIZZAZIONE DEL CIRCOLO: ogni circolo puo inserire i propri tornei, usare la propria icona o il proprio brand e adattare la piattaforma al proprio modo di lavorare.
+
+ASPETTI TECNICI
+
+- Zero installazione: funziona direttamente nel browser di qualsiasi dispositivo (iPhone, Android, tablet, desktop). Basta un link.
+- Dati in cloud su database sicuro - nessun rischio di perdere informazioni
+- Interfaccia responsive con tema chiaro/scuro, ottimizzata per l'uso al campo da smartphone
+- Progetto Value for Value senza scopo di lucro: ogni spesa sostiene solo server, backup e infrastruttura
+
+PERCHE POTREBBE INTERESSARVI
+
+I circoli che utilizzano Padel ELO Manager riscontrano:
+- Piu coinvolgimento: la classifica ELO crea competizione sana tra le coppie
+- Meno tempo: formazione coppie, punteggi e classifiche sono automatizzati
+- Piu varieta: 7 formati diversi invece del solito torneo
+- Documentazione professionale: PDF stampabili per bacheca e social del circolo
+- Fidelizzazione: i partecipanti tornano per vedere il proprio andamento e sfidare le coppie rivali
+
+Sarei lieto di mostrarvi una demo di 10 minuti, senza impegno, per farvi toccare con mano le funzionalita. Sono disponibile in qualsiasi giorno e orario comodo per voi.
+
+Resto a disposizione per qualsiasi domanda.
+
+Cordiali saluti,
+Mattia Ianniello
+Padel ELO Manager v4.1.3
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. EMAIL (versione informale per amici/conoscenti che giocano)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+OGGETTO: Ho creato un'app per i tornei di padel - te la faccio vedere?
+
+---
+
+Ciao!
+
+Sai che organizzo tornei di padel - bene, mi sono stufato di Excel e ho costruito un'app dedicata: Padel ELO Manager.
+
+In pratica fa tutto da sola:
+- Gestisce 7 formati torneo diversi, incluso il Torneo a Squadre (Americano, Beat the Box, TorneOtto, ecc.)
+- Sorteggia le coppie in modo intelligente (bilanciato per livello, niente piu coppie a caso dove i forti giocano sempre insieme)
+- Calcola una classifica ELO automatica basata sulle partite in coppia
+- Tiene traccia di ogni statistica: con chi hai giocato, contro chi hai perso, il tuo andamento nel tempo
+- Stampa classifiche, profili, tabelloni coppie - tutto in PDF pronto per la bacheca
+- Ogni circolo puo personalizzare tornei, icona e brand
+
+Non devi installare nulla - funziona dal browser, apri un link e sei dentro. I dati sono in cloud e funziona su qualsiasi dispositivo.
+
+La sto usando per le mie serate e i ragazzi sono impazziti - la classifica ELO crea una competizione incredibile tra le coppie, tutti vogliono vedere il proprio andamento e sfidare gli avversari storici.
+
+Il progetto e' Value for Value, senza scopo di lucro: ogni spesa copre solo server e infrastruttura.
+
+Se conosci qualcuno che organizza padel e potrebbe essere interessato, passagli il mio contatto. Oppure se vuoi vederla in azione, facciamo una call veloce di 5 minuti.
+
+A presto!
+Mattia
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. POST SOCIAL / STORY (versione ultra-breve)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Stanchi di organizzare tornei di padel con Excel e fogli volanti?
+
+Padel ELO Manager: sorteggio coppie intelligente, 7 formati torneo incluso il Torneo a Squadre, classifica ELO automatica, statistiche pro, stampa PDF.
+
+Un'app. Tutto dentro. Scrivetemi per una demo.
+
+#padel #torneo #app #elo #padelamatoriale

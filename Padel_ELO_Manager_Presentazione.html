@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Padel ELO Manager - La Piattaforma Definitiva per il Padel Amatoriale</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Manrope', -apple-system, sans-serif; color: #1e293b; line-height: 1.6; -webkit-text-size-adjust: 100%; }
+        .hero { background: linear-gradient(135deg, #0c4a6e 0%, #0284c7 50%, #38bdf8 100%); color: white; text-align: center; padding: 48px 16px 40px; }
+        .hero h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 6px; }
+        .hero .version { font-size: 12px; opacity: 0.6; margin-bottom: 16px; }
+        .hero .tagline { font-size: 16px; font-weight: 300; max-width: 700px; margin: 0 auto 24px; line-height: 1.5; }
+        .hero .badges { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+        .hero .badge { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+        .section { max-width: 960px; margin: 0 auto; padding: 40px 16px; }
+        .section-alt { background: #f8fafc; }
+        .section h2 { font-size: 22px; font-weight: 700; color: #0c4a6e; margin-bottom: 6px; text-align: center; }
+        .section .subtitle { text-align: center; color: #64748b; font-size: 14px; margin-bottom: 28px; max-width: 600px; margin-left: auto; margin-right: auto; }
+        .stats-bar { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; max-width: 800px; margin: -28px auto 0; position: relative; z-index: 10; padding: 0 16px; }
+        .stat-card { background: white; border-radius: 10px; padding: 16px 12px; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+        .stat-card .number { font-size: 26px; font-weight: 800; color: #0284c7; }
+        .stat-card .label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+        .features { display: grid; grid-template-columns: 1fr; gap: 16px; }
+        .feature { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px 18px; transition: transform 0.2s, box-shadow 0.2s; }
+        .feature:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.08); }
+        .feature .icon { font-size: 28px; margin-bottom: 8px; }
+        .feature h3 { font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
+        .feature p { font-size: 13px; color: #475569; line-height: 1.5; }
+        .formats { display: grid; grid-template-columns: 1fr; gap: 12px; }
+        .format { display: flex; align-items: flex-start; gap: 12px; background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; }
+        .format .fmt-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; background: linear-gradient(135deg, #e0f2fe, #bae6fd); }
+        .format h4 { font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 3px; }
+        .format p { font-size: 12px; color: #64748b; line-height: 1.4; }
+        .elo-box { background: linear-gradient(135deg, #0c4a6e, #0369a1); color: white; border-radius: 14px; padding: 28px 20px; }
+        .elo-box h3 { font-size: 20px; font-weight: 700; margin-bottom: 10px; }
+        .elo-box p { font-size: 13px; opacity: 0.9; line-height: 1.6; margin-bottom: 12px; }
+        .elo-box ul { list-style: none; padding: 0; margin-top: 20px; }
+        .elo-box li { padding: 10px 12px; margin-bottom: 6px; border-radius: 8px; background: rgba(255,255,255,0.1); font-size: 13px; }
+        .elo-box li strong { color: #7dd3fc; }
+        .print-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .print-item { text-align: center; padding: 16px 8px; border-radius: 10px; background: white; border: 1px solid #e2e8f0; }
+        .print-item .p-icon { font-size: 24px; margin-bottom: 6px; }
+        .print-item .p-label { font-size: 11px; color: #334155; font-weight: 600; }
+        .tech-row { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+        .tech-tag { background: #f1f5f9; border: 1px solid #e2e8f0; padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; color: #334155; }
+        .highlights { display: grid; grid-template-columns: 1fr; gap: 14px; }
+        .highlight { display: flex; gap: 12px; align-items: flex-start; padding: 16px; border-radius: 10px; background: white; border: 1px solid #e2e8f0; }
+        .highlight .h-num { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #0284c7, #38bdf8); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+        .highlight h4 { font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 3px; }
+        .highlight p { font-size: 12px; color: #64748b; }
+        .cta { background: linear-gradient(135deg, #0c4a6e, #0284c7); color: white; text-align: center; padding: 40px 16px; }
+        .cta h2 { font-size: 22px; font-weight: 800; margin-bottom: 10px; }
+        .cta p { font-size: 14px; opacity: 0.9; max-width: 600px; margin: 0 auto 20px; }
+        .cta .btn { display: inline-block; background: white; color: #0c4a6e; padding: 12px 28px; border-radius: 10px; font-size: 15px; font-weight: 700; text-decoration: none; }
+        .footer { text-align: center; padding: 20px 16px; font-size: 11px; color: #94a3b8; }
+        .footer a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+        @media (min-width: 768px) {
+            .hero { padding: 80px 24px 60px; } .hero h1 { font-size: 42px; } .hero .tagline { font-size: 22px; } .hero .badge { padding: 6px 16px; font-size: 13px; }
+            .section { padding: 60px 24px; } .section h2 { font-size: 28px; } .section .subtitle { font-size: 16px; margin-bottom: 40px; }
+            .stats-bar { grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: -40px; } .stat-card { padding: 24px 16px; } .stat-card .number { font-size: 32px; }
+            .features { grid-template-columns: repeat(2, 1fr); gap: 24px; } .feature { padding: 28px 24px; }
+            .formats { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+            .elo-box { padding: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: center; } .elo-box h3 { font-size: 24px; } .elo-box p { font-size: 15px; }
+            .print-grid { grid-template-columns: repeat(4, 1fr); }
+            .highlights { grid-template-columns: repeat(2, 1fr); gap: 20px; }
+            .cta { padding: 60px 24px; } .cta h2 { font-size: 30px; } .cta p { font-size: 17px; }
+        }
+        @media (min-width: 1024px) { .features { grid-template-columns: repeat(3, 1fr); } }
+        @media print { body { font-size: 9px; } .hero { padding: 30px 16px 20px; } .section { padding: 20px 16px; } .feature:hover { transform: none; } .features { grid-template-columns: repeat(3, 1fr); gap: 10px; } .formats { grid-template-columns: repeat(2, 1fr); } .highlights { grid-template-columns: repeat(2, 1fr); } .print-grid { grid-template-columns: repeat(4, 1fr); } .elo-box { display: grid; grid-template-columns: 1fr 1fr; } @page { size: A4; margin: 8mm; } -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    </style>
+</head>
+<body>
+<div class="hero">
+    <h1>Padel ELO Manager</h1>
+    <div class="version">v4.1.7</div>
+    <div class="tagline">La piattaforma completa per gestire tornei, coppie, tornei a squadre, classifiche e statistiche del padel amatoriale con un sistema di rating ELO professionistico.</div>
+    <div class="badges">
+        <span class="badge">Zero Installazione</span>
+        <span class="badge">8 Formati Torneo</span>
+        <span class="badge">Sistema ELO Avanzato</span>
+        <span class="badge">Stampa PDF</span>
+        <span class="badge">Sorteggio Coppie</span>
+        <span class="badge">Torneo a Squadre</span>
+    </div>
+</div>
+<div class="stats-bar">
+    <div class="stat-card"><div class="number">8</div><div class="label">Formati Torneo</div></div>
+    <div class="stat-card"><div class="number">18</div><div class="label">Funzioni Stampa</div></div>
+    <div class="stat-card"><div class="number">20+</div><div class="label">Statistiche Avanzate</div></div>
+    <div class="stat-card"><div class="number">4</div><div class="label">Modalit&agrave; Sorteggio</div></div>
+</div>
+<div class="section-alt"><div class="section">
+    <h2>Il Problema</h2>
+    <div class="subtitle">Ogni circolo di padel amatoriale affronta le stesse sfide</div>
+    <div class="highlights">
+        <div class="highlight"><div class="h-num">?</div><div><h4>Classifiche a mano</h4><p>Fogli Excel, lavagne, gruppi WhatsApp. Nessuno sa mai quale coppia ha vinto di pi&ugrave;, chi &egrave; in forma e come sono andate le giornate precedenti.</p></div></div>
+        <div class="highlight"><div class="h-num">?</div><div><h4>Coppie sbilanciate</h4><p>I sorteggi casuali creano partite a senso unico. Le coppie pi&ugrave; forti si ritrovano sempre insieme e le squadre meno esperte si scoraggiano.</p></div></div>
+        <div class="highlight"><div class="h-num">?</div><div><h4>Formati torneo limitati</h4><p>Sempre lo stesso formato. Si vorrebbe variare ma organizzare un Americano o un Beat the Box a mano &egrave; un incubo logistico.</p></div></div>
+        <div class="highlight"><div class="h-num">?</div><div><h4>Nessuno storico</h4><p>Dopo la giornata, i risultati si perdono. Nessuna tracciabilit&agrave; dell'andamento delle coppie nel tempo, nessuna statistica, nessun confronto.</p></div></div>
+    </div>
+</div></div>
+<div class="section">
+    <h2>Tutto Quello che Serve, in un'Unica App</h2>
+    <div class="subtitle">Dalla formazione delle coppie alla stampa dei risultati, ogni aspetto del padel organizzato &egrave; coperto</div>
+    <div class="features">
+        <div class="feature"><div class="icon">&#127942;</div><h3>Dashboard Interattiva</h3><p>Panoramica completa: Top 5 classifica, ultima giornata con le coppie vincitrici, attivit&agrave; recenti con punteggi coppia vs coppia. Tutto a colpo d'occhio.</p></div>
+        <div class="feature"><div class="icon">&#128202;</div><h3>Classifica ELO in Tempo Reale</h3><p>Rating ELO individuale calcolato automaticamente dopo ogni giornata, basato sulle partite disputate in coppia. Filtrabile per torneo, con soglia di presenza.</p></div>
+        <div class="feature"><div class="icon">&#128100;</div><h3>Profilo Completo</h3><p>Per ogni partecipante: partite vinte e perse con le varie coppie, compagni e avversari frequenti, grafico andamento ELO, form delle ultime 5 partite.</p></div>
+        <div class="feature"><div class="icon">&#127922;</div><h3>Sorteggio Intelligente delle Coppie</h3><p>4 modalit&agrave;: Casuale, Bilanciato (forte+debole), Teste di Serie, Manuale. Coppie equilibrate in un click, con animazione visiva del sorteggio.</p></div>
+        <div class="feature"><div class="icon">&#128200;</div><h3>Grafico ELO Multi-Partecipante</h3><p>Confronta l'andamento ELO nel tempo. Filtri per serie di tornei, curve morbide, esportazione in PDF A4 landscape con nomi e punteggi finali.</p></div>
+        <div class="feature"><div class="icon">&#128424;</div><h3>Stampa Professionale</h3><p>12 funzioni di stampa PDF: classifiche, profili individuali, tabelloni coppie, calendario e report torneo a squadre, schede match vuote per il campo, report completi post-torneo.</p></div>
+        <div class="feature"><div class="icon">&#128241;</div><h3>Zero Installazione</h3><p>Funziona direttamente nel browser, senza scaricare nulla. Apri un link e sei dentro. iPhone, Android, tablet, PC &mdash; qualsiasi dispositivo con un browser.</p></div>
+        <div class="feature"><div class="icon">&#127761;</div><h3>Tema Chiaro / Scuro</h3><p>Modalit&agrave; dark completa per l'uso serale al circolo. Rilevamento automatico, switch manuale. Design responsive ottimizzato per smartphone.</p></div>
+        <div class="feature"><div class="icon">&#127942;</div><h3>Torneo a Squadre</h3><p>Gestione separata del campionato a squadre: configurazione roster, calendario round robin, fase finale, risultati giornata per giornata, riepilogo finale e stampe dedicate.</p></div>
+        <div class="feature"><div class="icon">&#127912;</div><h3>Personalizzazione per il Circolo</h3><p>Ogni circolo pu&ograve; inserire i propri tornei, definire i propri format, usare la propria icona o il proprio brand e costruire un ambiente coerente con la propria identit&agrave;.</p></div>
+        <div class="feature"><div class="icon">&#129309;</div><h3>Value for Value</h3><p>Il progetto &egrave; senza scopo di lucro. Ogni contributo serve a sostenere server, database, backup e infrastruttura, mantenendo il servizio vivo e affidabile per tutti.</p></div>
+    </div>
+</div>
+<div class="section-alt"><div class="section">
+    <h2>8 Formati di Torneo Pronti all'Uso</h2>
+    <div class="subtitle">Ogni formato ha regole, formazione coppie, calcoli ELO e stampe dedicate. Basta scegliere e giocare.</div>
+    <div class="formats">
+        <div class="format"><div class="fmt-icon">&#9201;</div><div><h4>TorneOtto 30'</h4><p>Il classico: 4 coppie, 8 partecipanti, round robin completo in 6 partite da 30 minuti. Rapido, competitivo, perfetto per le serate infrasettimanali.</p></div></div>
+        <div class="format"><div class="fmt-icon">&#128256;</div><div><h4>Americano</h4><p>Da 4 a 10+ coppie. Il compagno cambia ad ogni turno: classifica individuale. Due sistemi di punteggio. Configurabile da 1 a 4 campi in parallelo.</p></div></div>
+        <div class="format"><div class="fmt-icon">&#127941;</div><div><h4>Round Robin + Finali</h4><p>Girone all'italiana tra coppie + finali 1&deg;-2&deg; e 3&deg;-4&deg;.</p></div></div>
+        <div class="format"><div class="fmt-icon">&#127934;</div><div><h4>Torneo Libero</h4><p>Formato flessibile da 4 a 6+ coppie. Round robin puro, niente finali. Ideale per giornate amichevoli con classifica a punti.</p></div></div>
+        <div class="format"><div class="fmt-icon">&#128506;</div><div><h4>Gironi + Fase Finale</h4><p>Per i tornei grandi: da 6 a 10 coppie divise in gironi. Le migliori coppie passano alle semifinali e finali.</p></div></div>
+        <div class="format"><div class="fmt-icon">&#128230;</div><div><h4>Beat the Box</h4><p>Il pi&ugrave; innovativo: coppie distribuite in box da 4, round robin interno con cambio compagno, poi semifinali e finali tra box.</p></div></div>
+        <div class="format"><div class="fmt-icon">&#128101;</div><div><h4>Torneo a Squadre</h4><p>Formato dedicato per squadre del circolo: round robin, finali, gestione rosa giocatori, calendario giornate e report completi della competizione.</p></div></div>
+        <div class="format"><div class="fmt-icon">&#127942;</div><div><h4>TPRA / Eliminazione Diretta</h4><p>Tabellone stile ATP con inserimento libero giocatori, teste di serie automatiche basate su ELO e gestione automatica dei BYE.</p></div></div>
+    </div>
+</div></div>
+<div class="section">
+    <h2>Sistema ELO Professionistico</h2>
+    <div class="subtitle">Lo stesso algoritmo usato negli scacchi e negli eSport, adattato alle dinamiche del padel in coppia</div>
+    <div class="elo-box">
+        <div>
+            <h3>Un Rating che Racconta la Verit&agrave;</h3>
+            <p>Ogni partecipante parte da <strong>1500 ELO</strong>. Dopo ogni partita in coppia, il rating si aggiorna in base alla forza della coppia avversaria. Battere una coppia pi&ugrave; forte vale di pi&ugrave;. Perdere contro una pi&ugrave; debole costa di pi&ugrave;.</p>
+            <p>Il sistema &egrave; <strong>perfettamente bilanciato</strong>: calcola le variazioni in base all'algoritmo standard K=16 matematico per assicurare la massima integrit&agrave; ed evitare inflazioni o distorsioni nel tempo.</p>
+            <p>Ogni serie di tornei ha il <strong>proprio universo ELO isolato</strong>: il circuito del mercoled&igrave; non influenza il torneo del sabato. Il rating globale &egrave; la somma di tutte le variazioni.</p>
+        </div>
+        <div>
+            <ul>
+                <li><strong>K=16 Standard</strong> &mdash; Formula fissa globale per integrit&agrave; matematica</li>
+                <li><strong>Isolamento per Serie</strong> &mdash; ELO separato per ogni circuito</li>
+                <li><strong>Doppio Sistema (Novit&agrave; v5)</strong> &mdash; ELO per il torneo, livello standard Playtomic per l'ingresso nel DB globale</li>
+                <li><strong>Soglia di Presenza</strong> &mdash; Filtra chi ha giocato meno del 50-90%</li>
+                <li><strong>Storico Completo</strong> &mdash; Ogni variazione tracciata con data e fase</li>
+                <li><strong>ELO di Coppia</strong> &mdash; Media dei rating dei due componenti</li>
+            </ul>
+        </div>
+    </div>
+</div>
+<div class="section-alt"><div class="section">
+    <h2>Statistiche che Fanno la Differenza</h2>
+    <div class="subtitle">Oltre 20 metriche calcolate automaticamente per ogni torneo, ogni coppia e ogni partecipante</div>
+    <div class="features">
+        <div class="feature"><div class="icon">&#128170;</div><h3>Performance Individuali</h3><p>Win rate, game ratio, streak migliore, ELO massimo raggiunto, variazione per giornata, form ultime 5 partite disputate in coppia.</p></div>
+        <div class="feature"><div class="icon">&#129309;</div><h3>Coppie e Avversari Frequenti</h3><p>Con chi hai giocato di pi&ugrave;? Contro chi hai perso? Percentuale di vittoria per ogni combinazione di coppia e ogni avversario affrontato.</p></div>
+        <div class="feature"><div class="icon">&#128165;</div><h3>Upset e Sorprese</h3><p>Tracking delle vittorie a sorpresa: quante volte la coppia sfavorita ha ribaltato il pronostico. Percentuale upset per partecipante.</p></div>
+        <div class="feature"><div class="icon">&#127942;</div><h3>Premi Simbolici</h3><p>MVP della giornata, premio Comeback, premio Stabilit&agrave;. Riconoscimenti automatici per coppie e singoli che rendono ogni serata speciale.</p></div>
+        <div class="feature"><div class="icon">&#128200;</div><h3>Andamento nel Tempo</h3><p>Grafico ELO interattivo: confronta la crescita di chiunque nel circuito, filtra per serie di tornei, esporta in PDF professionale.</p></div>
+        <div class="feature"><div class="icon">&#128203;</div><h3>Storico Giornate</h3><p>Per ogni partecipante: data, tipo torneo, partite in coppia, vittorie/sconfitte, percentuale, variazione ELO. Tutto stampabile.</p></div>
+    </div>
+</div></div>
+<div class="section">
+    <h2>12 Funzioni di Stampa Professionali</h2>
+    <div class="subtitle">Ogni report &egrave; ottimizzato per A4, con colori, font dedicato e layout pulito</div>
+    <div class="print-grid">
+        <div class="print-item"><div class="p-icon">&#128202;</div><div class="p-label">Classifica Generale</div></div>
+        <div class="print-item"><div class="p-icon">&#128100;</div><div class="p-label">Profili (1 per pagina)</div></div>
+        <div class="print-item"><div class="p-icon">&#128200;</div><div class="p-label">Grafico ELO Landscape</div></div>
+        <div class="print-item"><div class="p-icon">&#127942;</div><div class="p-label">Report Torneo Completo</div></div>
+        <div class="print-item"><div class="p-icon">&#128221;</div><div class="p-label">Schede Match Vuote</div></div>
+        <div class="print-item"><div class="p-icon">&#128230;</div><div class="p-label">Beat the Box Report</div></div>
+        <div class="print-item"><div class="p-icon">&#128203;</div><div class="p-label">Statistiche Torneo</div></div>
+        <div class="print-item"><div class="p-icon">&#128506;</div><div class="p-label">Tabelloni Gironi</div></div>
+        <div class="print-item"><div class="p-icon">&#127934;</div><div class="p-label">Torneo Libero Blank</div></div>
+        <div class="print-item"><div class="p-icon">&#127934;</div><div class="p-label">Torneo Libero Completo</div></div>
+        <div class="print-item"><div class="p-icon">&#128230;</div><div class="p-label">Beat the Box Blank</div></div>
+        <div class="print-item"><div class="p-icon">&#128200;</div><div class="p-label">Riepilogo Completo</div></div>
+    </div>
+</div>
+<div class="section-alt"><div class="section">
+    <h2>Perch&eacute; Padel ELO Manager</h2>
+    <div class="subtitle">Non &egrave; un foglio Excel glorificato. &Egrave; una piattaforma pensata per chi organizza serate di padel sul serio.</div>
+    <div class="highlights">
+        <div class="highlight"><div class="h-num">1</div><div><h4>Zero Configurazione</h4><p>Aggiungi i partecipanti, forma le coppie, scegli il formato, gioca. L'app calcola tutto: classifiche, ELO, statistiche. Nessun setup tecnico.</p></div></div>
+        <div class="highlight"><div class="h-num">2</div><div><h4>Funziona Ovunque, Senza Installare Nulla</h4><p>Basta un link: si apre nel browser di qualsiasi dispositivo &mdash; iPhone, Android, tablet, PC. Nessun download, nessuno store. Sei al campo? Apri il link e gestisci il torneo.</p></div></div>
+        <div class="highlight"><div class="h-num">3</div><div><h4>Multi-Giornata Nativo</h4><p>Gestisci intere stagioni: le giornate si raggruppano in serie, l'ELO si accumula, la classifica si aggiorna. Soglia di presenza configurabile.</p></div></div>
+        <div class="highlight"><div class="h-num">4</div><div><h4>Stabilit&agrave; Matematica</h4><p>L'algoritmo globale a K=16 evita l'inflazione di punti, ricompensando onestamente chi batte avversari molto pi&ugrave; quotati e limitando variazioni casuali per le partite scontate.</p></div></div>
+        <div class="highlight"><div class="h-num">5</div><div><h4>Stampabile e Condivisibile</h4><p>Ogni dato esportabile in PDF: classifiche, profili, grafici, tabelloni coppie. Perfetto per bacheche del circolo, gruppi WhatsApp, social.</p></div></div>
+        <div class="highlight"><div class="h-num">6</div><div><h4>Database Cloud Sicuro</h4><p>Dati su PostgreSQL serverless. Nessun rischio di perdere risultati. Accessibile da qualsiasi dispositivo, sempre aggiornato.</p></div></div>
+        <div class="highlight"><div class="h-num">7</div><div><h4>Brand del Circolo</h4><p>Il prodotto pu&ograve; essere adattato al singolo circolo: nome workspace, icona, identit&agrave; grafica e catalogo tornei personalizzati.</p></div></div>
+        <div class="highlight"><div class="h-num">8</div><div><h4>Value for Value</h4><p>Nessun modello speculativo: il progetto nasce per utilit&agrave; concreta. Ogni spesa copre solo server, infrastruttura e continuit&agrave; operativa.</p></div></div>
+    </div>
+</div></div>
+<div class="section">
+    <h2>Tecnologia Moderna e Scalabile</h2>
+    <div class="subtitle">Stack professionale, pronto per crescere</div>
+    <div class="tech-row">
+        <span class="tech-tag">React + TypeScript</span>
+        <span class="tech-tag">Vite</span>
+        <span class="tech-tag">Tailwind CSS</span>
+        <span class="tech-tag">Node.js + Express</span>
+        <span class="tech-tag">PostgreSQL (Neon)</span>
+        <span class="tech-tag">Recharts + SVG</span>
+        <span class="tech-tag">Web App Responsive</span>
+        <span class="tech-tag">Vercel Deploy</span>
+    </div>
+</div>
+<div class="cta">
+    <h2>Pronto a Trasformare il Tuo Circolo?</h2>
+    <p>Un'unica app per gestire tornei, coppie, tornei a squadre, classifiche, statistiche e stampe. Ogni circolo pu&ograve; personalizzarla con i propri tornei e il proprio brand.</p>
+    <a href="mailto:matteeo@icloud.com" class="btn">Contattare lo sviluppatore</a>
+</div>
+<div class="footer">
+    Padel ELO Manager v5.0.0 &mdash; Sviluppatore:
+    <a href="mailto:matteeo@icloud.com">matteeo@icloud.com</a>
+    &mdash; Progetto Value for Value senza scopo di lucro. Ogni contributo sostiene server e infrastruttura.
+</div>
+</body>
+</html>

@@ -1,0 +1,398 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    /* === Existing app variables === */
+    --app-bg: #eef4fb;
+    --app-bg-muted: #dfe9f6;
+    --app-surface: rgba(255, 255, 255, 0.72);
+    --app-surface-strong: rgba(255, 255, 255, 0.92);
+    --app-surface-soft: rgba(255, 255, 255, 0.58);
+    --app-border: rgba(148, 163, 184, 0.22);
+    --app-border-strong: rgba(148, 163, 184, 0.35);
+    --app-text: #1a2c4a;
+    --app-text-soft: #2d4a6e;
+    --app-text-muted: #4a6a8a;
+    --app-accent: #89ceff;
+    --app-accent-strong: #c9e6ff;
+    --app-accent-ink: #00344d;
+    --app-shadow: 0 24px 60px rgba(11, 19, 38, 0.16);
+    --app-shadow-soft: 0 12px 32px rgba(11, 19, 38, 0.08);
+
+    /* === Apple HIG Semantic Colors (Light Mode) === */
+    /* Backgrounds */
+    --ios-systemBackground: #FFFFFF;
+    --ios-secondarySystemBackground: #F2F2F7;
+    --ios-tertiarySystemBackground: #FFFFFF;
+    --ios-systemGroupedBackground: #F2F2F7;
+    --ios-secondarySystemGroupedBackground: #FFFFFF;
+    --ios-tertiarySystemGroupedBackground: #F2F2F7;
+
+    /* Labels */
+    --ios-label: rgba(0, 0, 0, 0.85);
+    --ios-secondaryLabel: rgba(60, 60, 67, 0.6);
+    --ios-tertiaryLabel: rgba(60, 60, 67, 0.3);
+    --ios-quaternaryLabel: rgba(60, 60, 67, 0.18);
+
+    /* Fills */
+    --ios-systemFill: rgba(120, 120, 128, 0.2);
+    --ios-secondarySystemFill: rgba(120, 120, 128, 0.16);
+    --ios-tertiarySystemFill: rgba(118, 118, 128, 0.12);
+    --ios-quaternarySystemFill: rgba(116, 116, 128, 0.08);
+
+    /* System Colors (Apple HIG — Light) */
+    --ios-systemBlue: #007AFF;
+    --ios-systemGreen: #34C759;
+    --ios-systemRed: #FF3B30;
+    --ios-systemOrange: #FF9500;
+    --ios-systemYellow: #FFCC00;
+    --ios-systemPurple: #AF52DE;
+    --ios-systemPink: #FF2D55;
+    --ios-systemTeal: #5AC8FA;
+    --ios-systemIndigo: #5856D6;
+    --ios-systemGray: #8E8E93;
+
+    /* Tinted backgrounds for buttons */
+    --ios-systemBlue-tint: rgba(0, 122, 255, 0.15);
+    --ios-systemRed-tint: rgba(255, 59, 48, 0.15);
+    --ios-systemGreen-tint: rgba(52, 199, 89, 0.15);
+
+    /* Separators */
+    --ios-separator: rgba(60, 60, 67, 0.29);
+    --ios-opaqueSeparator: #C6C6C8;
+
+    /* Materials (translucent) */
+    --ios-thickMaterial: rgba(253, 253, 253, 0.92);
+    --ios-thinMaterial: rgba(255, 255, 255, 0.78);
+    --ios-ultraThinMaterial: rgba(255, 255, 255, 0.55);
+
+    /* Segmented control selected bg */
+    --ios-segmentedSelected: #FFFFFF;
+
+    /* Corner radii (iOS standard) */
+    --ios-radius-sm: 8px;
+    --ios-radius-md: 10px;
+    --ios-radius-lg: 12px;
+    --ios-radius-xl: 16px;
+  }
+
+  .dark {
+    color-scheme: dark;
+    /* === Existing app variables === */
+    --app-bg: #0b1326;
+    --app-bg-muted: #131b2e;
+    --app-surface: rgba(23, 31, 51, 0.76);
+    --app-surface-strong: rgba(19, 31, 50, 0.92);
+    --app-surface-soft: rgba(19, 34, 55, 0.56);
+    --app-border: rgba(255, 255, 255, 0.08);
+    --app-border-strong: rgba(137, 206, 255, 0.16);
+    --app-text: #dae2fd;
+    --app-text-soft: #bec8d2;
+    --app-text-muted: #88929b;
+    --app-accent: #89ceff;
+    --app-accent-strong: #c9e6ff;
+    --app-accent-ink: #00344d;
+    --app-shadow: 0 28px 80px rgba(0, 0, 0, 0.48);
+    --app-shadow-soft: 0 16px 44px rgba(0, 0, 0, 0.32);
+
+    /* === Apple HIG Semantic Colors (Dark Mode) === */
+    /* Backgrounds */
+    --ios-systemBackground: #000000;
+    --ios-secondarySystemBackground: #1C1C1E;
+    --ios-tertiarySystemBackground: #2C2C2E;
+    --ios-systemGroupedBackground: #000000;
+    --ios-secondarySystemGroupedBackground: #1C1C1E;
+    --ios-tertiarySystemGroupedBackground: #2C2C2E;
+
+    /* Labels */
+    --ios-label: rgba(255, 255, 255, 0.85);
+    --ios-secondaryLabel: rgba(235, 235, 245, 0.6);
+    --ios-tertiaryLabel: rgba(235, 235, 245, 0.3);
+    --ios-quaternaryLabel: rgba(235, 235, 245, 0.18);
+
+    /* Fills */
+    --ios-systemFill: rgba(120, 120, 128, 0.36);
+    --ios-secondarySystemFill: rgba(120, 120, 128, 0.32);
+    --ios-tertiarySystemFill: rgba(118, 118, 128, 0.24);
+    --ios-quaternarySystemFill: rgba(116, 116, 128, 0.18);
+
+    /* System Colors (Apple HIG — Dark) */
+    --ios-systemBlue: #0A84FF;
+    --ios-systemGreen: #30D158;
+    --ios-systemRed: #FF453A;
+    --ios-systemOrange: #FF9F0A;
+    --ios-systemYellow: #FFD60A;
+    --ios-systemPurple: #BF5AF2;
+    --ios-systemPink: #FF375F;
+    --ios-systemTeal: #64D2FF;
+    --ios-systemIndigo: #5E5CE6;
+    --ios-systemGray: #98989D;
+
+    /* Tinted backgrounds for buttons */
+    --ios-systemBlue-tint: rgba(10, 132, 255, 0.18);
+    --ios-systemRed-tint: rgba(255, 69, 58, 0.18);
+    --ios-systemGreen-tint: rgba(48, 209, 88, 0.18);
+
+    /* Separators */
+    --ios-separator: rgba(84, 84, 88, 0.65);
+    --ios-opaqueSeparator: #38383A;
+
+    /* Materials (translucent) */
+    --ios-thickMaterial: rgba(30, 30, 30, 0.92);
+    --ios-thinMaterial: rgba(30, 30, 30, 0.78);
+    --ios-ultraThinMaterial: rgba(30, 30, 30, 0.55);
+
+    /* Segmented control selected bg */
+    --ios-segmentedSelected: rgba(99, 99, 102, 0.36);
+  }
+
+  html {
+    @apply antialiased;
+    background-color: var(--app-bg);
+    min-height: 100%;
+  }
+
+  body {
+    background-color: var(--app-bg);
+    background:
+      radial-gradient(circle at top right, rgba(137, 206, 255, 0.12), transparent 30%),
+      radial-gradient(circle at bottom left, rgba(157, 223, 46, 0.05), transparent 28%),
+      linear-gradient(180deg, var(--app-bg) 0%, var(--app-bg-muted) 100%);
+    color: var(--app-text);
+    min-height: 100vh;
+    min-height: 100svh;
+    min-height: 100dvh;
+    padding-right: env(safe-area-inset-right);
+    padding-left: env(safe-area-inset-left);
+  }
+
+  #root {
+    height: 100vh;
+    height: 100svh;
+    height: calc(100dvh + env(safe-area-inset-bottom));
+    min-height: calc(100dvh + env(safe-area-inset-bottom));
+    overflow: hidden;
+  }
+
+  ::selection {
+    background: rgba(137, 206, 255, 0.28);
+    color: var(--app-text);
+  }
+
+  input,
+  select,
+  textarea {
+    background: var(--app-surface-strong);
+    color: var(--app-text);
+    border: 1px solid var(--app-border);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--app-text-muted);
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: none;
+    border-color: rgba(137, 206, 255, 0.55);
+    box-shadow: 0 0 0 4px rgba(137, 206, 255, 0.14);
+  }
+}
+
+@layer components {
+  .app-shell {
+    background:
+      radial-gradient(circle at top right, rgba(137, 206, 255, 0.09), transparent 30%),
+      radial-gradient(circle at bottom left, rgba(157, 223, 46, 0.05), transparent 26%),
+      linear-gradient(180deg, var(--app-bg) 0%, var(--app-bg-muted) 100%);
+  }
+
+  .app-panel {
+    background: var(--app-surface);
+    border: 1px solid var(--app-border);
+    box-shadow: var(--app-shadow-soft);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+  }
+
+  .app-panel-strong {
+    background: var(--app-surface-strong);
+    border: 1px solid var(--app-border-strong);
+    box-shadow: var(--app-shadow);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+  }
+
+  .stitch-card {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stitch-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at top right, rgba(137, 206, 255, 0.12), transparent 26%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 45%);
+  }
+
+  /* Reusable "row card" style used for Top5 and other inner list rows. */
+  .stitch-row {
+    border: 1px solid rgba(148, 163, 184, 0.45);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(241, 245, 251, 0.55) 42%, rgba(255, 255, 255, 0.14));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.25),
+      0 10px 24px rgba(15, 23, 42, 0.06);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  .dark .stitch-row {
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03) 45%, rgba(0, 0, 0, 0.10));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      0 12px 28px rgba(2, 6, 23, 0.22);
+  }
+
+  .stitch-row-hover {
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .stitch-row-hover:hover {
+    border-color: rgba(137, 206, 255, 0.35);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.28),
+      0 16px 34px rgba(137, 206, 255, 0.12);
+  }
+
+  .dark .stitch-row-hover:hover {
+    border-color: rgba(137, 206, 255, 0.22);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      0 18px 40px rgba(14, 165, 233, 0.10);
+  }
+
+  .app-grid {
+    position: relative;
+  }
+
+  .app-grid::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(137, 206, 255, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(137, 206, 255, 0.05) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.3), transparent 80%);
+  }
+
+  .mobile-date-input {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  .mobile-date-input::-webkit-date-and-time-value {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .mobile-date-input::-webkit-calendar-picker-indicator {
+    margin: 0;
+    padding: 0;
+    opacity: 1;
+  }
+
+  .section-title {
+    @apply text-[1.7rem] font-black tracking-tight text-sky-500 dark:text-sky-300 md:text-[2.1rem];
+  }
+
+  .section-kicker {
+    @apply text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500;
+  }
+
+  .stitch-kpi {
+    @apply app-panel rounded-[24px] border border-slate-200/70 p-4 dark:border-white/10;
+  }
+
+  /* === Apple HIG Typography Scale === */
+  .sf-large-title { font: 400 34px/41px -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif; letter-spacing: 0.37px; }
+  .sf-title1 { font: 400 28px/34px -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif; letter-spacing: 0.36px; }
+  .sf-title2 { font: 400 22px/28px -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif; letter-spacing: 0.35px; }
+  .sf-title3 { font: 400 20px/25px -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif; letter-spacing: 0.38px; }
+  .sf-headline { font: 600 17px/22px -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; letter-spacing: -0.41px; }
+  .sf-body { font: 400 17px/22px -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; letter-spacing: -0.41px; }
+  .sf-callout { font: 400 16px/21px -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; letter-spacing: -0.32px; }
+  .sf-subhead { font: 400 15px/20px -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; letter-spacing: -0.24px; }
+  .sf-footnote { font: 400 13px/18px -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; letter-spacing: -0.08px; }
+  .sf-caption1 { font: 400 12px/16px -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; letter-spacing: 0px; }
+  .sf-caption2 { font: 400 11px/13px -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; letter-spacing: 0.06px; }
+}
+
+@layer utilities {
+  .text-app {
+    color: var(--app-text);
+  }
+
+  .text-app-soft {
+    color: var(--app-text-soft);
+  }
+
+  .text-app-muted {
+    color: var(--app-text-muted);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(137, 206, 255, 0.20);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(137, 206, 255, 0.40);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}

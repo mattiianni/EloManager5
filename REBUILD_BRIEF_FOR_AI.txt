@@ -1,0 +1,136 @@
+Padel ELO Manager — Brief tecnico per ricostruzione da zero (v4.1.x)
+
+Obiettivo
+- Ricostruire da zero una web app/PWA per gestione tornei di padel con ELO, statistiche e stampa PDF.
+- Deve supportare multi-workspace (isolamento dati) con login tramite codice numerico a 6 cifre.
+
+8) Considerazioni Grafiche / UI
+- L'intestazione globale dell'app e lo Splash Screen utilizzano file immagine (`elomanager.png` per dark theme, `elomanager_w.png` per light theme) anziché titoli testuali.
+- Nei PDF generati (specie tornei a squadre), la griglia dei risultati deve sempre assicurare lo spazio in larghezza sufficiente per evitare gli accapo nei match da 3 set.
+
+Stack consigliato (compatibile con progetto attuale)
+- Frontend: React 18 + TypeScript + Vite + Tailwind
+- Backend: Node.js + Express
+- DB: PostgreSQL (Neon o equivalente)
+- Auth: JWT (stateless)
+- PDF: generazione report (frontend e/o backend) + stampa iOS/PWA gestita correttamente
+- PWA: manifest + SW con update aggressivo e NO cache per API
+
+Principi di prodotto
+- “Giornata” = unità operativa di una sessione (crea, stampa, gioca, inserisci risultati, report finale).
+- “Torneo” può essere una serie con più giornate collegate.
+- La UI deve rendere chiarissimo:
+  - Creare un nuovo torneo solo quando parte una nuova serie
+  - Aggiungere una giornata a un torneo esistente tramite bottone accanto al torneo (aggancio)
+- Stampa PDF è una feature core: tabellone operativo prima, resoconto dopo.
+
+Funzionalità minime (MVP completo)
+1) Workspace + access codes
+   - Tabelle: workspaces, access_codes, audit_logs
+   - access_codes:
+     - code_hash (bcrypt), code_plain opzionale per admin
+     - is_admin boolean
+     - is_active boolean
+     - expires_at timestamp opzionale
+     - last_used_at, failed_attempts, locked_until (anti brute-force)
+   - Login:
+     - POST /api/auth/login { code }
+     - Verifica codice attivo + non scaduto + non locked
+     - Ritorna { token, workspace { id, name }, isAdmin }
+   - Verify:
+     - POST /api/auth/verify: valida JWT e ritorna workspace/isAdmin
+
+2) Dati core (scoped per workspace)
+   - Tabelle:
+     - players (workspace_id, name, surname, position, initial_elo, current_elo)
+     - tournaments (workspace_id, name, type, date, club, status, giornata_name)
+     - matches (workspace_id, tournament_id, date, team players, sets JSON, winner, created_at)
+     - elo_history (workspace_id, event_id, player_id, elo_before/after, delta, date, type)
+   - Ogni query deve filtrare per workspace_id (in backend dal JWT).
+
+3) Flusso “coppie” (tournament day)
+   - UI: Nuovo Torneo / Nuova Giornata
+     - scelta: singolo/coppie, torneo a squadre, aggancio torneo esistente
+   - Per singolo/coppie:
+     - selezione giocatori presenti
+     - numero coppie da sorteggiare
+     - tipo sorteggio:
+       - casuale
+       - bilanciato ELO (forte+debole)
+       - teste di serie
+       - manuale
+     - “attendi sorteggio”
+     - scegli tipo giornata/formato torneo:
+       - TorneOtto 30'
+       - Americano
+       - Round Robin + Finali
+       - Gironi + Fase Finale
+       - Beat the Box
+       - Torneo Libero
+     - “attendi creazione tabellone”
+     - final actions:
+       - salva
+       - esporta/stampa PDF vuoto (da compilare a mano)
+       - inserisci subito risultati
+
+4) Risultati
+   - Pagina Risultati deve:
+     - listare tornei e giornate (scoped)
+     - aprire una giornata e permettere editing set/winner
+     - salvare e ricalcolare ELO + elo_history
+   - Deve permettere modifiche successive (rollback ELO history del torneo e ricalcolo).
+
+5) Classifiche e statistiche
+   - Classifiche: ranking ELO globale e/o filtrato per serie torneo.
+   - Statistiche: devono funzionare anche con dati parziali (almeno 1 match completato).
+
+6) Torneo a squadre (feature separata)
+   - Tabelle dedicate:
+     - team_tournament_configs (root tournament)
+     - team_tournament_teams
+     - team_tournament_matchdays
+     - team_tournament_matchday_matches (submatch)
+     - team_tournament_fixtures (bracket / playoffs)
+   - UI: configurazione root, squadre, calendario; matchday con submatch; stampa.
+   - Statistiche basate sui submatch giocati.
+
+7) Admin
+   - /api/admin/workspaces (list/create/delete)
+   - /api/admin/codes (list/generate/deactivate/permanent delete)
+   - /api/admin/impersonate (switch workspace)
+   - /api/admin/audit-logs (list)
+   - /api/admin/recalculate-elos (maintenance)
+   - Guardrail:
+     - non cancellare workspace attuale
+     - non cancellare ultimo workspace
+     - cancellazione workspace deve cascatare i dati (FK ON DELETE CASCADE)
+
+PWA / caching (obbligatorio)
+- Service worker con auto update (skipWaiting/clientsClaim)
+- NO caching per API:
+  - /api/auth/*
+  - /api/data/*
+  - in generale /api/* (NetworkOnly o no-store)
+
+PDF / stampa (obbligatorio)
+- Export PDF:
+  - tabellone vuoto prima (da portare in campo)
+  - resoconto finale dopo
+- Su iOS/PWA: preview nativa, evitare flussi che bloccano l’utente senza “chiudi”.
+
+Qualità e UX
+- Niente layout shift in footer/CTA su mobile (bottoni con label dinamiche devono avere dimensioni stabili).
+- Sidebar desktop light deve avere contrasto adeguato e stato attivo evidente.
+- Form admin su mobile: layout mobile-first, lineare, pulsanti full width.
+
+Suggerimento di roadmap implementativa
+1) Schema DB + migrazioni + seed workspace default + admin code
+2) Auth (login/verify) + middleware workspace_id
+3) CRUD giocatori + bootstrap data API
+4) Tornei coppie: create tournament + create day + sorteggio + tabellone + persist
+5) Inserimento risultati + ELO + elo_history + rollback/modify
+6) PDF (tabellone e resoconto) + stampa iOS
+7) Statistiche + partial stats
+8) Team tournament
+9) Admin (workspaces/codes/audit/recalc)
+

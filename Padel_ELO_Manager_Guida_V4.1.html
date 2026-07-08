@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Padel ELO Manager V4.1 - Guida all'Uso</title>
+<style>
+    @page { size: A4; margin: 0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+        font-size: 11pt;
+        color: #172033;
+        line-height: 1.5;
+        padding: 18mm 16mm;
+        background: #ffffff;
+    }
+    .cover {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        min-height: 80vh;
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    .cover-icon {
+        width: 104px;
+        height: 104px;
+        background: linear-gradient(135deg, #0ea5e9, #22c55e);
+        border-radius: 26px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 32px;
+        box-shadow: 0 12px 30px rgba(14, 165, 233, 0.28);
+    }
+    .cover-icon svg { width: 62px; height: 62px; color: white; }
+    .cover h1 { font-size: 35pt; font-weight: 800; color: #0f172a; margin-bottom: 8px; }
+    .cover .subtitle { font-size: 14pt; color: #64748b; margin-bottom: 40px; }
+    .cover .version { font-size: 11pt; color: #94a3b8; }
+    .cover .author { font-size: 12pt; color: #475569; margin-top: 60px; }
+    h2 {
+        font-size: 18pt;
+        font-weight: 700;
+        color: #0f172a;
+        margin-top: 28px;
+        margin-bottom: 12px;
+        padding-bottom: 6px;
+        border-bottom: 2px solid #0ea5e9;
+        page-break-before: always;
+    }
+    h3 { font-size: 13pt; font-weight: 700; color: #1e293b; margin-top: 18px; margin-bottom: 8px; }
+    h4 { font-size: 11pt; font-weight: 700; color: #334155; margin-top: 12px; margin-bottom: 6px; }
+    p { margin-bottom: 8px; }
+    ul, ol { margin-left: 20px; margin-bottom: 10px; }
+    li { margin-bottom: 5px; }
+    strong { color: #0f172a; }
+    .info-box {
+        background: #f0f9ff;
+        border-left: 4px solid #0ea5e9;
+        padding: 10px 14px;
+        border-radius: 0 8px 8px 0;
+        margin: 10px 0;
+    }
+    .warning-box {
+        background: #fff7ed;
+        border-left: 4px solid #f97316;
+        padding: 10px 14px;
+        border-radius: 0 8px 8px 0;
+        margin: 10px 0;
+    }
+    .success-box {
+        background: #f0fdf4;
+        border-left: 4px solid #22c55e;
+        padding: 10px 14px;
+        border-radius: 0 8px 8px 0;
+        margin: 10px 0;
+    }
+    .info-box p, .warning-box p, .success-box p { margin: 0; font-size: 10pt; }
+    .step {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+        break-inside: avoid;
+    }
+    .step-num {
+        flex-shrink: 0;
+        width: 28px;
+        height: 28px;
+        background: #0ea5e9;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 13px;
+        margin-top: 2px;
+    }
+    .step-text { flex: 1; }
+    .two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin: 10px 0;
+    }
+    .card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 14px;
+        break-inside: avoid;
+    }
+    .card h4 { margin-top: 0; color: #0ea5e9; }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 10px 0 16px 0;
+        font-size: 10pt;
+    }
+    th {
+        background: #0f172a;
+        color: white;
+        padding: 8px 10px;
+        text-align: left;
+        font-weight: 600;
+    }
+    td {
+        padding: 7px 10px;
+        border-bottom: 1px solid #e2e8f0;
+        vertical-align: top;
+    }
+    tr:nth-child(even) td { background: #f8fafc; }
+    .mobile-figure {
+        display: flex;
+        gap: 18px;
+        align-items: center;
+        margin: 14px 0 18px 0;
+        break-inside: avoid;
+    }
+    .phone {
+        width: 190px;
+        min-width: 190px;
+        height: 338px;
+        border: 8px solid #1e293b;
+        border-radius: 28px;
+        background: #eaf4ff;
+        padding: 10px;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.18);
+        position: relative;
+        overflow: hidden;
+    }
+    .phone:before {
+        content: "";
+        position: absolute;
+        top: 5px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 56px;
+        height: 5px;
+        border-radius: 999px;
+        background: #334155;
+        z-index: 2;
+    }
+    .phone-screen {
+        height: 100%;
+        border-radius: 20px;
+        background: linear-gradient(180deg, #f8fbff 0%, #e9f3ff 100%);
+        padding: 18px 10px 10px 10px;
+        overflow: hidden;
+    }
+    .app-title {
+        font-size: 18px;
+        font-weight: 800;
+        color: #3ea0e8;
+        line-height: 1.05;
+        margin-bottom: 3px;
+    }
+    .app-sub {
+        font-size: 8px;
+        color: #94a3b8;
+        margin-bottom: 8px;
+    }
+    .mini-card {
+        background: rgba(255,255,255,0.92);
+        border: 1px solid #dbeafe;
+        border-radius: 12px;
+        padding: 9px;
+        margin-bottom: 8px;
+    }
+    .mini-card h5 {
+        font-size: 10px;
+        color: #0f172a;
+        margin-bottom: 6px;
+    }
+    .mini-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 6px;
+        font-size: 8px;
+        color: #64748b;
+        border-top: 1px solid #e2e8f0;
+        padding-top: 5px;
+        margin-top: 5px;
+    }
+    .mini-button {
+        background: #3ea0e8;
+        color: white;
+        border-radius: 8px;
+        padding: 7px;
+        text-align: center;
+        font-size: 9px;
+        font-weight: 700;
+        margin-top: 6px;
+    }
+    .mini-button.green { background: #22c55e; }
+    .mini-button.orange { background: #f97316; }
+    .mini-pill {
+        display: inline-block;
+        border-radius: 999px;
+        background: #e0f2fe;
+        color: #0369a1;
+        padding: 3px 6px;
+        font-size: 7px;
+        font-weight: 700;
+        margin: 2px 2px 2px 0;
+    }
+    .mini-list {
+        display: grid;
+        gap: 5px;
+    }
+    .mini-list div {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 6px;
+        font-size: 8px;
+        color: #334155;
+    }
+    .figure-text { flex: 1; }
+    .figure-text h4 { margin-top: 0; color: #0f172a; }
+    .figure-text p { font-size: 10.5pt; color: #475569; }
+    .caption {
+        font-size: 9pt;
+        color: #64748b;
+        font-style: italic;
+        margin-top: -8px;
+        margin-bottom: 12px;
+    }
+    .footer {
+        text-align: center;
+        font-size: 9pt;
+        color: #94a3b8;
+        margin-top: 40px;
+        padding-top: 12px;
+        border-top: 1px solid #e2e8f0;
+    }
+    @media print {
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .card, .info-box, .warning-box, .success-box, .mobile-figure { break-inside: avoid; }
+    }
+</style>
+</head>
+<body>
+
+<div class="cover">
+    <div class="cover-icon">
+        <svg fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="1.7">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 21h8M12 17v4M7 4h10v4a5 5 0 01-10 0V4z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 6H3v2a4 4 0 004 4M19 6h2v2a4 4 0 01-4 4" />
+        </svg>
+    </div>
+    <h1>Padel ELO Manager</h1>
+    <p class="subtitle">Guida completa all'utilizzo della versione V4.1</p>
+    <p class="version">Versione guida V4.1 - App v4.1.11</p>
+    <p class="author">Mattia Ianniello &mdash; Giugno 2026</p>
+</div>
+
+<h2>Indice</h2>
+<ol style="font-size: 12pt; line-height: 2;">
+    <li>Cos'e' Padel ELO Manager</li>
+    <li>Accesso e schermata principale</li>
+    <li>Flusso corretto: nuova giornata o torneo esistente</li>
+    <li>Creare una giornata singolo/a coppie</li>
+    <li>Scegliere il formato della giornata</li>
+    <li>Stampare il PDF operativo</li>
+    <li>Inserire risultati e creare il resoconto finale</li>
+    <li>Torneo a Squadre</li>
+    <li>Classifiche e statistiche</li>
+    <li>Admin, workspace e codici</li>
+    <li>Domande frequenti</li>
+</ol>
+
+<h2>1. Cos'e' Padel ELO Manager</h2>
+<p><strong>Padel ELO Manager</strong> e' una piattaforma web/PWA per organizzare tornei di padel, creare sorteggi, stampare tabelloni, inserire risultati e mantenere una classifica ELO aggiornata per ogni giocatore.</p>
+
+<div class="info-box">
+    <p><strong>Idea centrale:</strong> l'app segue tutta la giornata: scelta giocatori, sorteggio, tabellone, PDF da portare in campo, inserimento risultati, ranking e statistiche.</p>
+</div>
+
+<div class="mobile-figure">
+    <div class="phone">
+        <div class="phone-screen">
+            <div class="app-title">Padel Elo<br>Manager</div>
+            <div class="app-sub">v4.1.11 / Giu 2026</div>
+            <div class="mini-card">
+                <h5>Dashboard</h5>
+                <span class="mini-pill">Giocatori 28</span>
+                <span class="mini-pill">Partite 202</span>
+                <span class="mini-pill">Giornate 48</span>
+            </div>
+            <div class="mini-card">
+                <h5>Menu rapido</h5>
+                <div class="mini-list">
+                    <div>Tornei</div>
+                    <div>Classifiche</div>
+                    <div>Risultati</div>
+                    <div>Statistiche</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="figure-text">
+        <h4>Schermata principale mobile/PWA</h4>
+        <p>La dashboard mostra lo stato generale del workspace. Dal menu raggiungi le sezioni operative: Tornei, Sorteggi, Risultati, Classifiche, Giocatori e Statistiche.</p>
+        <p>Su telefono l'app e' pensata per essere usata come PWA: puoi tenerla sulla Home e lavorare durante la giornata di torneo.</p>
+    </div>
+</div>
+
+<h2>2. Accesso e schermata principale</h2>
+<p>L'accesso avviene tramite <strong>codice a 6 cifre</strong>. Ogni codice porta dentro un workspace, cioe' un ambiente separato con i propri giocatori, tornei, classifiche e risultati.</p>
+
+<div class="step"><div class="step-num">1</div><div class="step-text"><strong>Apri l'app</strong> da browser o dalla PWA installata sul telefono.</div></div>
+<div class="step"><div class="step-num">2</div><div class="step-text"><strong>Inserisci il codice</strong> ricevuto dall'amministratore.</div></div>
+<div class="step"><div class="step-num">3</div><div class="step-text"><strong>Entra nella Dashboard</strong> e usa il menu per raggiungere la sezione che ti serve.</div></div>
+
+<div class="warning-box">
+    <p><strong>Codici temporanei:</strong> l'amministratore puo' creare codici con scadenza, ad esempio 8 ore, 24 ore, 48 ore o 7 giorni. Un codice scaduto non permette nuovi accessi.</p>
+</div>
+
+<h2>3. Flusso corretto: nuova giornata o torneo esistente</h2>
+<p>Questo e' il punto piu' importante. La prima scelta stabilisce se stai creando qualcosa di nuovo o se stai continuando un torneo gia' presente.</p>
+
+<div class="mobile-figure">
+    <div class="phone">
+        <div class="phone-screen">
+            <div class="app-title">Nuovo Torneo<br>Nuova Giornata</div>
+            <div class="mini-card">
+                <h5>Cosa vuoi creare?</h5>
+                <div class="mini-button">Singolo / Coppie</div>
+                <div class="mini-button green">Torneo a Squadre</div>
+                <div class="mini-button orange">Aggancia a torneo esistente</div>
+            </div>
+            <div class="mini-card">
+                <h5>Promemoria</h5>
+                <div class="mini-row"><span>Nuova serie</span><strong>crea</strong></div>
+                <div class="mini-row"><span>Serie gia' attiva</span><strong>aggancia</strong></div>
+            </div>
+        </div>
+    </div>
+    <div class="figure-text">
+        <h4>La scelta iniziale</h4>
+        <p>Quando apri <strong>Nuovo Torneo / Nuova Giornata</strong> devi scegliere il percorso corretto: torneo singolo/a coppie, torneo a squadre oppure aggancio a un torneo esistente.</p>
+        <p>Se il torneo esiste gia', usa l'aggancio. In questo modo la nuova giornata resta dentro lo stesso storico.</p>
+    </div>
+</div>
+
+<table>
+    <thead><tr><th>Scelta</th><th>Quando usarla</th><th>Risultato</th></tr></thead>
+    <tbody>
+        <tr><td><strong>Singolo / Coppie</strong></td><td>Nuova giornata classica con coppie.</td><td>Selezioni coppie, sorteggio, formato e tabellone.</td></tr>
+        <tr><td><strong>Torneo a Squadre</strong></td><td>Competizione con squadre e matchday.</td><td>Configuri squadre, calendario e giornate.</td></tr>
+        <tr><td><strong>Aggancia a torneo esistente</strong></td><td>Serie gia' creata, nuova giornata da aggiungere.</td><td>La giornata resta collegata allo stesso torneo.</td></tr>
+    </tbody>
+</table>
+
+<h2>4. Creare una giornata singolo/a coppie</h2>
+<p>Questo flusso vale per i tornei classici: TorneOtto, Americano, Round Robin + Finali, Gironi + Fase Finale, Beat the Box e Torneo Libero.</p>
+
+<div class="mobile-figure">
+    <div class="phone">
+        <div class="phone-screen">
+            <div class="app-title">Sorteggio</div>
+            <div class="mini-card">
+                <h5>Numero coppie</h5>
+                <span class="mini-pill">4</span><span class="mini-pill">6</span><span class="mini-pill">8</span><span class="mini-pill">10</span>
+            </div>
+            <div class="mini-card">
+                <h5>Tipo sorteggio</h5>
+                <div class="mini-list">
+                    <div>Casuale</div>
+                    <div>Bilanciato ELO</div>
+                    <div>Teste di serie</div>
+                    <div>Manuale</div>
+                </div>
+            </div>
+            <div class="mini-button">Avvia sorteggio</div>
+        </div>
+    </div>
+    <div class="figure-text">
+        <h4>Impostare il sorteggio</h4>
+        <p>Inserisci il <strong>numero di coppie da sorteggiare</strong> e scegli il <strong>tipo di sorteggio</strong>. Questo passaggio non riguarda il Torneo a Squadre, che ha un flusso dedicato.</p>
+        <p>Dopo l'avvio, attendi il sorteggio: l'app prepara le coppie o la configurazione necessaria per il formato scelto.</p>
+    </div>
+</div>
+
+<ol>
+    <li>Scegli <strong>Singolo / Coppie</strong>.</li>
+    <li>Inserisci il <strong>numero di coppie</strong> da sorteggiare.</li>
+    <li>Seleziona i giocatori disponibili.</li>
+    <li>Scegli il <strong>tipo di sorteggio</strong>.</li>
+    <li>Attendi che l'app generi le coppie.</li>
+    <li>Scegli il formato della giornata.</li>
+    <li>Attendi la creazione del tabellone.</li>
+</ol>
+
+<h2>5. Scegliere il formato della giornata</h2>
+<p>Dopo il sorteggio devi scegliere il formato operativo della giornata. Ogni formato crea un tabellone diverso.</p>
+
+<div class="mobile-figure">
+    <div class="phone">
+        <div class="phone-screen">
+            <div class="app-title">Tipo Giornata</div>
+            <div class="mini-card">
+                <h5>Formati</h5>
+                <div class="mini-list">
+                    <div>TorneOtto 30'</div>
+                    <div>Americano</div>
+                    <div>Round Robin + Finali</div>
+                    <div>Gironi + Fase Finale</div>
+                    <div>Beat the Box</div>
+                    <div>Torneo Libero</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="figure-text">
+        <h4>Formato torneo</h4>
+        <p>Scegli il formato in base alla giornata che vuoi organizzare. Dopo la scelta, l'app crea il tabellone e ti permette di salvarlo, stamparlo o inserire i risultati.</p>
+    </div>
+</div>
+
+<table>
+    <thead><tr><th>Formato</th><th>Uso consigliato</th><th>Nota pratica</th></tr></thead>
+    <tbody>
+        <tr><td><strong>TorneOtto 30'</strong></td><td>Giornata veloce e ordinata.</td><td>Ideale per serate rapide.</td></tr>
+        <tr><td><strong>Americano</strong></td><td>Rotazione con piu' turni.</td><td>Configura campi, turni e punteggio.</td></tr>
+        <tr><td><strong>Round Robin + Finali</strong></td><td>Classifica iniziale e finali.</td><td>L'app compone la fase finale.</td></tr>
+        <tr><td><strong>Gironi + Fase Finale</strong></td><td>Molte coppie divise in gruppi.</td><td>Utile con teste di serie.</td></tr>
+        <tr><td><strong>Beat the Box</strong></td><td>Formato a box con finali.</td><td>Adatto a eventi piu' strutturati.</td></tr>
+        <tr><td><strong>Torneo Libero</strong></td><td>Massima flessibilita'.</td><td>Per giornate meno rigide.</td></tr>
+    </tbody>
+</table>
+
+<h2>6. Stampare il PDF operativo</h2>
+<p>Quando il tabellone e' creato, puoi stampare o condividere il PDF. Questo e' il documento da portare in campo e far compilare a mano dai giocatori.</p>
+
+<div class="mobile-figure">
+    <div class="phone">
+        <div class="phone-screen">
+            <div class="app-title">Tabellone</div>
+            <div class="mini-card">
+                <h5>Partita 1</h5>
+                <div class="mini-row"><span>Rossi / Bianchi</span><strong>vs</strong></div>
+                <div class="mini-row"><span>Verdi / Neri</span><strong></strong></div>
+            </div>
+            <div class="mini-card">
+                <h5>Azioni</h5>
+                <div class="mini-button green">Salva giornata</div>
+                <div class="mini-button">Stampa PDF</div>
+                <div class="mini-button orange">Inserisci risultati</div>
+            </div>
+        </div>
+    </div>
+    <div class="figure-text">
+        <h4>Tre possibilita' dopo il tabellone</h4>
+        <p><strong>Salva</strong> la giornata se vuoi recuperarla dopo. <strong>Stampa PDF</strong> se vuoi consegnare il foglio ai giocatori. <strong>Inserisci risultati</strong> se stai caricando subito i punteggi.</p>
+        <p>Il passaggio da non saltare e' il salvataggio: senza giornata salvata, poi non hai un record ordinato da recuperare in Risultati.</p>
+    </div>
+</div>
+
+<div class="warning-box">
+    <p><strong>Non dimenticare di salvare.</strong> Il PDF serve per il campo, ma il salvataggio serve all'app per ritrovare la giornata dopo.</p>
+</div>
+
+<h2>7. Inserire risultati e creare il resoconto finale</h2>
+<p>Dopo che i giocatori hanno compilato il foglio in campo, rientra nell'app e registra i punteggi reali.</p>
+
+<div class="mobile-figure">
+    <div class="phone">
+        <div class="phone-screen">
+            <div class="app-title">Risultati</div>
+            <div class="mini-card">
+                <h5>Giornate salvate</h5>
+                <div class="mini-list">
+                    <div>ATP Platinum - 30/04</div>
+                    <div>TorneOtto Inverno 2025</div>
+                    <div>Six Flags Test</div>
+                </div>
+            </div>
+            <div class="mini-card">
+                <h5>Punteggio</h5>
+                <div class="mini-row"><span>Set 1</span><strong>6 - 4</strong></div>
+                <div class="mini-row"><span>Set 2</span><strong>7 - 5</strong></div>
+            </div>
+            <div class="mini-button green">Salva risultati</div>
+        </div>
+    </div>
+    <div class="figure-text">
+        <h4>Recupero da Risultati</h4>
+        <p>Vai in <strong>Risultati</strong>, apri la giornata salvata, riporta i punteggi del foglio e conferma. Dopo il salvataggio puoi creare il PDF finale e controllare ranking e statistiche.</p>
+    </div>
+</div>
+
+<ol>
+    <li>Vai su <strong>Risultati</strong>.</li>
+    <li>Apri la giornata salvata.</li>
+    <li>Inserisci i punteggi reali.</li>
+    <li>Controlla vincitori e set.</li>
+    <li>Salva i risultati.</li>
+    <li>Genera PDF o resoconto finale.</li>
+</ol>
+
+<h2>8. Torneo a Squadre</h2>
+<p>Il Torneo a Squadre e' separato dai tornei singolo/a coppie. Non parte dal numero di coppie da sorteggiare, ma da squadre, calendario e matchday.</p>
+
+<div class="mobile-figure">
+    <div class="phone">
+        <div class="phone-screen">
+            <div class="app-title">Torneo a<br>Squadre</div>
+            <div class="mini-card">
+                <h5>Configurazione</h5>
+                <div class="mini-row"><span>Squadre</span><strong>6</strong></div>
+                <div class="mini-row"><span>Formato</span><strong>RR + Finali</strong></div>
+                <div class="mini-row"><span>Partite/giornata</span><strong>3</strong></div>
+            </div>
+            <div class="mini-card">
+                <h5>Matchday</h5>
+                <div class="mini-list">
+                    <div>Team 1 vs Team 4</div>
+                    <div>Team 2 vs Team 5</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="figure-text">
+        <h4>Flusso dedicato</h4>
+        <h1>Guida - Tornei a Squadre (v4.1.11)</h1>crei prima il torneo root, poi configuri squadre e calendario. Le giornate sono matchday collegati al torneo principale.</p>
+        <p>Per proseguire una competizione gia' iniziata, usa il bottone accanto al torneo o alla fase da giocare.</p>
+    </div>
+</div>
+
+<ol>
+    <li>Vai su <strong>Nuovo Torneo / Nuova Giornata</strong>.</li>
+    <li>Scegli <strong>Torneo a Squadre</strong>.</li>
+    <li>Configura squadre, giocatori, formato e calendario.</li>
+    <li>Apri il matchday da giocare.</li>
+    <li>Inserisci giocatori nei sub-match.</li>
+    <li>Salva, stampa PDF operativo o inserisci subito i risultati.</li>
+    <li>Chiudi la giornata e controlla riepilogo, classifiche e statistiche.</li>
+</ol>
+
+<h2>9. Classifiche e statistiche</h2>
+<p>Quando i risultati sono salvati, l'app aggiorna ranking e statistiche.</p>
+
+<div class="mobile-figure">
+    <div class="phone">
+        <div class="phone-screen">
+            <div class="app-title">Statistiche</div>
+            <div class="mini-card">
+                <h5>Filtro torneo</h5>
+                <div class="mini-button">TorneOtto Inverno 2025</div>
+            </div>
+            <div class="mini-card">
+                <h5>Top giocatori</h5>
+                <div class="mini-row"><span>1. Roberto</span><strong>1737</strong></div>
+                <div class="mini-row"><span>2. Mattia</span><strong>1672</strong></div>
+                <div class="mini-row"><span>3. Alberto</span><strong>1563</strong></div>
+            </div>
+        </div>
+    </div>
+    <div class="figure-text">
+        <h4>Dopo i risultati</h4>
+        <p><strong>Classifiche</strong> mostra il ranking ELO. <strong>Statistiche</strong> mostra analisi del torneo o della serie: top giocatori, games, streak, coppie frequenti e dati parziali se il torneo e' ancora in corso.</p>
+    </div>
+</div>
+
+<h2>10. Admin, workspace e codici</h2>
+<p>Il pannello Admin permette di gestire workspace, codici di accesso e audit log.</p>
+
+<div class="mobile-figure">
+    <div class="phone">
+        <div class="phone-screen">
+            <div class="app-title">Admin</div>
+            <div class="mini-card">
+                <h5>Genera nuovo codice</h5>
+                <div class="mini-row"><span>Workspace</span><strong>Principale</strong></div>
+                <div class="mini-row"><span>Nome Utilizzatore</span><strong>Marco</strong></div>
+                <div class="mini-row"><span>Scadenza</span><strong>24 ore</strong></div>
+            </div>
+            <div class="mini-button green">Genera</div>
+        </div>
+    </div>
+    <div class="figure-text">
+        <h4>Codici temporanei</h4>
+        <p>Puoi creare codici per collaboratori o amici che devono inserire una giornata. La scadenza blocca nuovi accessi dopo il tempo scelto.</p>
+        <p>La cancellazione di un workspace elimina anche i codici collegati. Non puoi cancellare il workspace attualmente in uso o l'ultimo workspace disponibile.</p>
+    </div>
+</div>
+
+<table>
+    <thead><tr><th>Scadenza codice</th><th>Quando usarla</th></tr></thead>
+    <tbody>
+        <tr><td>Nessuna</td><td>Utente abituale.</td></tr>
+        <tr><td>8 ore</td><td>Aiuto temporaneo per una singola giornata.</td></tr>
+        <tr><td>24 / 48 ore</td><td>Collaboratore che deve inserire risultati o gestire una sessione.</td></tr>
+        <tr><td>7 giorni</td><td>Evento o torneo distribuito su piu' giorni.</td></tr>
+    </tbody>
+</table>
+
+<h2>11. Domande frequenti</h2>
+
+<h3>Devo creare un nuovo torneo ogni volta?</h3>
+<p>No. Se e' la stessa serie, usa l'aggancio a torneo esistente. Creare sempre tornei nuovi rende lo storico meno leggibile.</p>
+
+<h3>Quando uso Risultati?</h3>
+<p>Quando devi recuperare una giornata salvata, inserire i punteggi dopo il campo o correggere un risultato gia' presente.</p>
+
+<h3>Le icone Condividi cosa fanno?</h3>
+<p>Generano il PDF: tabellone operativo prima della giornata o riepilogo finale dopo i risultati.</p>
+
+<h3>Posso far compilare il PDF a mano?</h3>
+<p>Si'. Il flusso consigliato e': crea giornata, salva, stampa PDF, portalo in campo, compila a mano, poi recupera la giornata da Risultati e inserisci i punteggi finali.</p>
+
+<h3>Cosa succede se un codice scade?</h3>
+<p>Il codice scaduto non permette nuovi accessi. Le sessioni gia' aperte restano valide fino alla scadenza naturale del token.</p>
+
+<div class="footer">
+    Padel ELO Manager V4.1 - Guida all'uso - App v4.1.11 - Giugno 2026
+</div>
+
+</body>
+</html>
