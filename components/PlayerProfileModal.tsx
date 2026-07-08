@@ -207,15 +207,15 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
             const opp1 = getPlayerById(oppTeam[0]);
             const opp2 = getPlayerById(oppTeam[1]);
             const won = (isTeam1 && m.winner === 'team1') || (!isTeam1 && m.winner === 'team2');
-            const myScore = m.sets.reduce((sum, s) => sum + (isTeam1 ? s.team1 : s.team2), 0);
-            const oppScore = m.sets.reduce((sum, s) => sum + (isTeam1 ? s.team2 : s.team1), 0);
+            const myScores = m.sets.map(s => (isTeam1 ? s.team1 : s.team2));
+            const oppScores = m.sets.map(s => (isTeam1 ? s.team2 : s.team1));
 
             return {
                 date: new Date(m.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }),
                 partner: partner ? `${partner.name} ${partner.surname[0]}.` : '?',
                 opponents: `${opp1 ? `${opp1.name} ${opp1.surname[0]}.` : '?'} & ${opp2 ? `${opp2.name} ${opp2.surname[0]}.` : '?'}`,
-                myScore,
-                oppScore,
+                myScores,
+                oppScores,
                 won,
             };
         });
@@ -377,14 +377,22 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
                                             <span className="text-gray-600 dark:text-gray-300 truncate flex-1">
                                                 con <span className="font-medium">{m.partner}</span>
                                             </span>
-                                            <span className={`shrink-0 w-7 text-center py-0.5 rounded text-xs font-bold text-white ${m.won ? 'bg-green-600' : 'bg-gray-400 dark:bg-gray-600'}`}>{m.myScore}</span>
+                                            <div className="flex gap-1">
+                                                {m.myScores.map((score, idx) => (
+                                                    <span key={idx} className={`shrink-0 w-7 text-center py-0.5 rounded text-xs font-bold text-white ${m.won ? 'bg-green-600' : 'bg-gray-400 dark:bg-gray-600'}`}>{score}</span>
+                                                ))}
+                                            </div>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <span className="w-10 shrink-0"></span>
                                             <span className="text-gray-600 dark:text-gray-300 truncate flex-1">
                                                 vs <span className="font-medium">{m.opponents}</span>
                                             </span>
-                                            <span className={`shrink-0 w-7 text-center py-0.5 rounded text-xs font-bold text-white ${!m.won ? 'bg-green-600' : 'bg-gray-400 dark:bg-gray-600'}`}>{m.oppScore}</span>
+                                            <div className="flex gap-1">
+                                                {m.oppScores.map((score, idx) => (
+                                                    <span key={idx} className={`shrink-0 w-7 text-center py-0.5 rounded text-xs font-bold text-white ${!m.won ? 'bg-green-600' : 'bg-gray-400 dark:bg-gray-600'}`}>{score}</span>
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
                                 ))}

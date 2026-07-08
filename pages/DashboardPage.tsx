@@ -111,8 +111,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments }
         return sorted.map(m => {
             const t1 = m.team1.map(id => { const p = getPlayerById(id); return p ? `${p.name} ${p.surname[0]}.` : '?'; }).join(' & ');
             const t2 = m.team2.map(id => { const p = getPlayerById(id); return p ? `${p.name} ${p.surname[0]}.` : '?'; }).join(' & ');
-            const t1Score = m.sets.reduce((sum, s) => sum + s.team1, 0);
-            const t2Score = m.sets.reduce((sum, s) => sum + s.team2, 0);
+            const t1Score = m.sets.map(s => s.team1).join(' ');
+            const t2Score = m.sets.map(s => s.team2).join(' ');
             const date = new Date(m.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
             return { date, t1, t2, t1Score, t2Score, winner: m.winner };
         });
