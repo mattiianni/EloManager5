@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import PDFDocument from 'pdfkit';
 
-const APP_VERSION = '4.1.11';
-const APP_MONTH = 'Giu 2026';
+const APP_VERSION = '5.0.1';
+const APP_MONTH = 'Lug 2026';
 
 const outDir = path.resolve(process.cwd(), 'docs');
 const outPath = path.join(outDir, `Guida_Torneo_a_Squadre_v${APP_VERSION}.pdf`);

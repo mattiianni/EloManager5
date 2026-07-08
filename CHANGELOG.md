@@ -1,3 +1,9 @@
+## v5.0.1 — 2026-07-09
+### Modifiche
+- Fix: rimosso l'orario 00:00:00 dalla data dell'ultima giornata nella dashboard.
+- Feature: implementata la stampa dei profili singoli/selezionati (stampa a scelta).
+- Modifica: il grafico ELO in UI e PDF ora raggruppa le variazioni per giornata (stessa data = singola variazione aggregata).
+
 # Changelog
 
 ## v4.1.11 — 2026-06-27

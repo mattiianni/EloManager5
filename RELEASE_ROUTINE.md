@@ -2,9 +2,9 @@
 
 ## Stato corrente
 
-- Versione attuale: `4.1.11`
-- Formato incrementale successivo: `4.1.11`, `4.1.12`, `4.1.13`, ...
-- Mese corrente di riferimento: `Giu 2026`
+- Versione attuale: `5.0.1`
+- Formato incrementale successivo: `5.0.1`, `4.1.12`, `4.1.13`, ...
+- Mese corrente di riferimento: `Lug 2026`
 
 ## Checklist
 
