@@ -5,6 +5,7 @@ import { usePadelStore } from '../hooks/usePadelStore.tsx';
 import { Player } from '../types.ts';
 import { HIGSheet } from './ui/HIGSheet.tsx';
 import { XIcon, ArrowUpIcon, ArrowDownIcon, ArrowStableIcon } from './ui/Icons.tsx';
+import { printPlayerProfiles } from '../services/printService.ts';
 
 interface PlayerProfileModalProps {
     player: Player | null;
@@ -32,7 +33,7 @@ const CustomTooltip: React.FC<any> = ({ active, payload, label, theme, chartData
 
 const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose, theme: themeProp }) => {
     const theme = themeProp || (document.documentElement.classList.contains('dark') ? 'dark' : 'light');
-    const { matches, eloHistory, getPlayerById, tournaments } = usePadelStore();
+    const { players, matches, eloHistory, getPlayerById, tournaments } = usePadelStore();
 
     // Only count matches from completed tournaments or friendly matches
     const playerMatches = useMemo(() => {
@@ -230,7 +231,13 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
     const axisStrokeColor = theme === 'dark' ? '#9ca3af' : '#6b7280';
 
     return (
-        <HIGSheet isOpen={true} onClose={onClose} title={`${player.name} ${player.surname}`} trailingAction={{ label: 'Chiudi', onPress: onClose }}>
+        <HIGSheet 
+            isOpen={true} 
+            onClose={onClose} 
+            title={`${player.name} ${player.surname}`} 
+            leadingAction={{ label: 'Stampa', onPress: () => printPlayerProfiles([player.id], players, matches, eloHistory, tournaments) }}
+            trailingAction={{ label: 'Chiudi', onPress: onClose }}
+        >
             <div className="w-full flex flex-col">
                 {/* Custom header info */}
                 <div className="flex items-center justify-between px-6 py-2 border-b border-[var(--ios-separator)]">
