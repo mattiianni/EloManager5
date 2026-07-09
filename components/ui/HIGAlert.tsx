@@ -109,16 +109,16 @@ export const HIGAlert: React.FC<HIGAlertProps> = ({ isOpen, title, message, acti
           <div
             style={{
               font: '400 13px/18px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
-              color: 'var(--ios-secondaryLabel)',
+              color: 'var(--ios-label)',
               textAlign: 'center',
-              padding: '4px 16px 20px',
+              padding: '0 16px 18px',
             }}
           >
             {message}
           </div>
         )}
 
-        <div style={{ borderTop: '0.5px solid var(--ios-separator)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
           {sortedActions.map((action, index) => {
             const isCancel = action.style === 'cancel';
             const isDestructive = action.style === 'destructive';
@@ -134,13 +134,16 @@ export const HIGAlert: React.FC<HIGAlertProps> = ({ isOpen, title, message, acti
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  font: `${isCancel ? '600' : '400'} 17px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif`,
+                  font: `${isCancel ? '600' : '400'} 17px/22px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif`,
                   color: isDestructive ? 'var(--ios-systemRed)' : 'var(--ios-systemBlue)',
                   background: 'transparent',
                   border: 'none',
-                  borderTop: index > 0 ? '0.5px solid var(--ios-separator)' : 'none',
+                  borderTop: '0.5px solid var(--ios-separator)',
                   cursor: 'pointer',
                   padding: '11px 16px',
+                  textAlign: 'center',
+                  wordBreak: 'break-word',
+                  whiteSpace: 'pre-wrap',
                 }}
                 onPointerDown={(e) => {
                   e.currentTarget.style.background = 'var(--ios-quaternarySystemFill)';

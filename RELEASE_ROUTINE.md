@@ -2,15 +2,16 @@
 
 ## Stato corrente
 
-- Versione attuale: `5.0.2`
-- Formato incrementale successivo: `5.0.2`, `4.1.12`, `4.1.13`, ...
+- Versione attuale: `5.0.3`
+- Formato incrementale successivo: `5.0.3`, `4.1.12`, `4.1.13`, ...
 - Mese corrente di riferimento: `Lug 2026`
 
 ## Checklist
 
 1. Aggiornare la versione in tutta l'app e nei materiali allegati.
 2. Se il mese reale cambia, aggiornare anche il mese visibile nei riferimenti applicativi e documentali.
-3. Aggiornare i file `.md` rilevanti e il `README.md`.
+3. **Aggiornamento Documentazione (Cruciale)**: Prima di procedere, verifica se ci sono nuove funzionalità (es. Integrazione Playtomic) e assicurati che siano state spiegate in: Guida HTML, Presentazione HTML e Testi Promo.
+4. Aggiornare i file `.md` rilevanti e il `README.md`.
    - Aggiornare `CHANGELOG.md` (non usare piu' `UPDATE_SUMMARY_*.md`).
 4. Aggiornare l'HTML guida utente (`Padel_ELO_Manager_Guida_V4.1.html`) e, se serve, esportarne il PDF aggiornato nella cartella alias/distribuzione.
 5. Eseguire lo script `node scripts/generate-team-tournament-guide-pdf.mjs` per generare la guida in PDF aggiornata dei tornei a squadre, e rimuovere le vecchie versioni in `docs/`.

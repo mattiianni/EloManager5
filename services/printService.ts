@@ -1107,8 +1107,8 @@ export const printTournamentReport = (
                 }
                 
                 // Calculate stats
-                const team1Games = match.sets.reduce((sum, set) => sum + set.team1, 0);
-                const team2Games = match.sets.reduce((sum, set) => sum + set.team2, 0);
+                const team1Games = (match.sets || []).reduce((sum, set) => sum + set.team1, 0);
+                const team2Games = (match.sets || []).reduce((sum, set) => sum + set.team2, 0);
                 
                 const team1Stat = gironeTeams.get(team1Key);
                 const team2Stat = gironeTeams.get(team2Key);
@@ -4010,8 +4010,8 @@ export const printGironiTournament = (
         gironeMatches.forEach(match => {
             const team1Key = teamKey(match.team1);
             const team2Key = teamKey(match.team2);
-            const team1Games = match.sets.reduce((sum, set) => sum + set.team1, 0);
-            const team2Games = match.sets.reduce((sum, set) => sum + set.team2, 0);
+            const team1Games = (match.sets || []).reduce((sum, set) => sum + set.team1, 0);
+            const team2Games = (match.sets || []).reduce((sum, set) => sum + set.team2, 0);
 
             const team1Stat = pairStats.get(team1Key);
             const team2Stat = pairStats.get(team2Key);
@@ -4311,8 +4311,8 @@ export const printGironiTournament = (
     allMatches.forEach(match => {
         const team1Key = `${match.team1[0]}-${match.team1[1]}`;
         const team2Key = `${match.team2[0]}-${match.team2[1]}`;
-        const team1Games = match.sets.reduce((sum, set) => sum + set.team1, 0);
-        const team2Games = match.sets.reduce((sum, set) => sum + set.team2, 0);
+        const team1Games = (match.sets || []).reduce((sum, set) => sum + set.team1, 0);
+        const team2Games = (match.sets || []).reduce((sum, set) => sum + set.team2, 0);
         
         const team1Stat = pairStats.get(team1Key);
         const team2Stat = pairStats.get(team2Key);
@@ -5989,8 +5989,8 @@ export const printTorneoLiberoComplete = (
             const team1Key = [match.team1[0], match.team1[1]].sort().join('-');
             const team2Key = [match.team2[0], match.team2[1]].sort().join('-');
             
-            const team1Games = match.sets.reduce((sum, set) => sum + set.team1, 0);
-            const team2Games = match.sets.reduce((sum, set) => sum + set.team2, 0);
+            const team1Games = (match.sets || []).reduce((sum, set) => sum + set.team1, 0);
+            const team2Games = (match.sets || []).reduce((sum, set) => sum + set.team2, 0);
             
             const stats1 = pairStats.get(team1Key);
             const stats2 = pairStats.get(team2Key);
@@ -6086,8 +6086,8 @@ export const printTorneoLiberoComplete = (
         matches.forEach(match => {
             if (!match.winner || match.winner === 'draw') return;
             
-            const team1Games = match.sets.reduce((sum, set) => sum + set.team1, 0);
-            const team2Games = match.sets.reduce((sum, set) => sum + set.team2, 0);
+            const team1Games = (match.sets || []).reduce((sum, set) => sum + set.team1, 0);
+            const team2Games = (match.sets || []).reduce((sum, set) => sum + set.team2, 0);
             
             match.team1.forEach(pid => {
                 const stats = playerStats.get(pid);

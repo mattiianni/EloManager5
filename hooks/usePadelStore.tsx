@@ -67,8 +67,10 @@ interface PadelStore {
     getTeamTournamentPlayerStats: (rootTournamentId: string) => Promise<TeamTournamentPlayerStatsRow[]>;
     getTeamTournamentFixtures: (rootTournamentId: string) => Promise<TeamTournamentFixture[]>;
     updateTournament: (tournamentId: string, updatedData: Pick<Tournament, 'club' | 'date' | 'name'>) => Promise<void>;
-    completeTournament: (tournamentId: string) => Promise<void>;
-    deleteTournament: (tournamentId: string) => Promise<void>;
+    updateTournamentSeriesName: (oldName: string, newName: string) => Promise<void>;
+    cascadeResetTournament: (tournamentId: string, phaseMatchIds: string[], skipRefresh?: boolean) => Promise<void>;
+    deleteTournament: (tournamentId: string, deleteIsolatedPlayers?: boolean) => Promise<void>;
+    deleteTournamentSeries: (giornataName: string, deleteIsolatedPlayers?: boolean) => Promise<void>;
     getPlayerById: (id: string) => Player | { id: string; name: string; surname: string; isDeleted: true } | undefined;
 }
 
@@ -348,6 +350,14 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         });
         await fetchData();
     };
+
+    const updateTournamentSeriesName = async (oldName: string, newName: string): Promise<void> => {
+        await apiRequest('/api/tournaments/series/name', {
+            method: 'PUT',
+            body: JSON.stringify({ oldName, newName }),
+        });
+        await fetchData();
+    };
     
     const completeTournament = async (tournamentId: string): Promise<void> => {
         await apiRequest(`/api/tournaments/complete`, {
@@ -357,10 +367,18 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         await fetchData();
     };
     
-    const deleteTournament = async (tournamentId: string): Promise<void> => {
+    const deleteTournament = async (tournamentId: string, deleteIsolatedPlayers?: boolean): Promise<void> => {
         await apiRequest(`/api/tournaments`, {
             method: 'DELETE',
-            body: JSON.stringify({ id: tournamentId }),
+            body: JSON.stringify({ id: tournamentId, deleteIsolatedPlayers }),
+        });
+        await fetchData();
+    };
+
+    const deleteTournamentSeries = async (giornataName: string, deleteIsolatedPlayers?: boolean): Promise<void> => {
+        await apiRequest(`/api/tournaments/series`, {
+            method: 'DELETE',
+            body: JSON.stringify({ giornataName, deleteIsolatedPlayers }),
         });
         await fetchData();
     };
@@ -384,6 +402,8 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             updateTournamentMatches,
             cascadeResetTournament,
             addTournament,
+            deleteTournament,
+            deleteTournamentSeries,
             createTeamTournament,
             getTeamTournamentConfig,
             updateTeamTournamentConfig,
@@ -398,7 +418,6 @@ export const PadelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             getTeamTournamentFixtures,
             updateTournament,
             completeTournament,
-            deleteTournament,
             getPlayerById
         }}>
             {children}

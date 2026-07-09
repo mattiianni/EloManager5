@@ -11,6 +11,10 @@ Quando l'utente chiede di fare "commit e push", "creare una release" o "salvare 
    - Usa `grep_search` per cercare le occorrenze del vecchio mese (nei file `constants.ts`, `README.md`, `CHANGELOG.md`, file `*.html` ecc.).
    - Se il mese reale è cambiato, aggiorna tutte queste occorrenze con il nuovo mese.
 
+2.5. **Verifica Documentazione (MANDATORY):**
+   - Controlla se le ultime modifiche logiche hanno impatto sulla documentazione.
+   - Aggiorna i file rilevanti: Guida HTML, Presentazione HTML, Testi Promo e Istruzioni d'uso.
+
 3. **Backup ZIP sulla Scrivania:**
    - Esegui un comando per creare uno zip pulito sulla scrivania (escludendo `node_modules` e `.git`):
      ```bash
@@ -34,3 +38,8 @@ Quando l'utente chiede di fare "commit e push", "creare una release" o "salvare 
    - Aggiungi i file a git: `git add .`
    - Esegui il commit indicando la nuova versione e i cambiamenti: `git commit -m "chore: release vX.Y.Z - [descrizione]"`
    - Esegui il push: `git push` (assicurati che il remote sia configurato col token).
+
+# Regola Comportamentale: Modifiche Logiche e Grafiche
+
+**MANDATORY**: Non prendere MAI iniziative non richieste riguardo alla veste grafica (UI) o alla logica di business dell'applicazione. Se noti un comportamento anomalo a livello grafico o logico che l'utente non ha segnalato, NON modificarlo. 
+Tuttavia, I BUG (crash, errori a schermo, variabili non definite) e le rotture di codice DEVONO essere sempre indagati e corretti. Attieniti strettamente al prompt per le modifiche di design.

@@ -9,6 +9,7 @@ import { Tournament, TournamentType, Match, Player, TournamentStandingEntry, Tea
 import Card from '../components/ui/Card.tsx';
 import Button from '../components/ui/Button.tsx';
 import { HIGSheet } from '../components/ui/HIGSheet';
+import { HIGAlert } from '../components/ui/HIGAlert';
 import { TrashIcon, PrintIcon, PencilIcon, ChevronDownIcon } from '../components/ui/Icons.tsx';
 import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
 import TpraBracketView from '../components/TpraBracketView.tsx';
@@ -219,12 +220,20 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
     tournamentToExpand,
     clearTournamentToExpand
 }) => {
-    const { tournaments, matches, deleteTournament, getPlayerById, updateTournament, loading, eloHistory, getTeamTournamentConfig, getTeamTournamentTeams, getTeamTournamentFixtures, getTeamTournamentMatchdayByTournamentDayId, getTeamTournamentMatchdays } = usePadelStore();
+    const { tournaments, matches, deleteTournament, deleteTournamentSeries, getPlayerById, updateTournament, updateTournamentSeriesName, loading, eloHistory, getTeamTournamentConfig, getTeamTournamentTeams, getTeamTournamentFixtures, getTeamTournamentMatchdayByTournamentDayId, getTeamTournamentMatchdays } = usePadelStore();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [deleteAlert, setDeleteAlert] = useState<{
+        isOpen: boolean;
+        type: 'tournament' | 'series' | null;
+        idOrName: string | null;
+    }>({ isOpen: false, type: null, idOrName: null });
     const [tournamentToEdit, setTournamentToEdit] = useState<Tournament | null>(null);
     const [editName, setEditName] = useState('');
     const [editClub, setEditClub] = useState('');
     const [editDate, setEditDate] = useState('');
+    const [seriesEditModalOpen, setSeriesEditModalOpen] = useState(false);
+    const [seriesEditOldName, setSeriesEditOldName] = useState('');
+    const [seriesEditNewName, setSeriesEditNewName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [expandedNames, setExpandedNames] = useState<Set<string>>(new Set());
     const [expandedMatchdays, setExpandedMatchdays] = useState<Set<string>>(new Set());
@@ -592,16 +601,82 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
             printTournamentReport(tournament, standings, tournamentMatches, getPlayerById, americanoFields, tournament.americanoScoringType, roundRobinMatchCount, displayName);
         }
     };
+    const handlePrintSeries = (days: Tournament[]) => {
+        if (!days || days.length === 0) return;
+        const seriesMatches = matches.filter(m => days.some(d => d.id === m.tournamentId));
+        const firstDay = days[0];
+        const seriesRoot: Tournament = {
+            ...firstDay,
+            id: firstDay.id, // using first day id as anchor
+            name: firstDay.giornataName || firstDay.name,
+        };
+        const displayName = seriesRoot.name;
+
+        if (firstDay.type === TournamentType.BeatTheBox) {
+            const { boxes, boxStandings, semifinalMatches, finalMatches, individualStandings } = processBeatTheBoxData(seriesMatches, getPlayerById);
+            printBeatTheBoxComplete(seriesRoot, boxes, boxStandings, semifinalMatches, finalMatches, individualStandings, getPlayerById, displayName);
+            return;
+        }
+        
+        let standings: TournamentStandingEntry[];
+        if (firstDay.type === TournamentType.Americano) {
+            standings = calculateAmericanoStandings(seriesMatches);
+        } else if (firstDay.type === TournamentType.RoundRobinFinali && seriesMatches.length > 2) {
+            const roundRobinMatchCount = seriesMatches.length - 2;
+            standings = calculateFinalStandingsForRoundRobinFinali(seriesMatches, roundRobinMatchCount, getPlayerById);
+        } else {
+            standings = calculateTournamentStandings(seriesMatches, getPlayerById);
+        }
+
+        const americanoFields = firstDay.type === TournamentType.Americano ? firstDay.americanoFields : undefined;
+        
+        if (firstDay.type === TournamentType.GironiFaseFinale) {
+            printGironiTournament(seriesRoot, seriesMatches, getPlayerById, displayName);
+        } else {
+            printTournamentReport(seriesRoot, standings, seriesMatches, getPlayerById, americanoFields, firstDay.americanoScoringType, undefined, displayName);
+        }
+    };
 
     const handleDelete = (tournamentId: string) => {
-        if (window.confirm('Sei sicuro di voler eliminare questa giornata del torneo? Verranno eliminati anche tutti i match associati.')) {
-            deleteTournament(tournamentId);
+        setDeleteAlert({ isOpen: true, type: 'tournament', idOrName: tournamentId });
+    };
+
+    const handleConfirmDelete = async (cascade: boolean) => {
+        if (deleteAlert.type === 'tournament' && deleteAlert.idOrName) {
+            await deleteTournament(deleteAlert.idOrName, cascade);
+        } else if (deleteAlert.type === 'series' && deleteAlert.idOrName) {
+            await deleteTournamentSeries(deleteAlert.idOrName, cascade);
         }
+        setDeleteAlert({ isOpen: false, type: null, idOrName: null });
     };
     
     const handleEdit = (tournament: Tournament) => {
         setTournamentToEdit(tournament);
         setIsEditModalOpen(true);
+    };
+
+    const handleEditSeriesSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        try {
+            await updateTournamentSeriesName(seriesEditOldName, seriesEditNewName);
+            setSeriesEditModalOpen(false);
+            setSeriesEditOldName('');
+            setSeriesEditNewName('');
+            
+            // Re-expand the newly named series if it was expanded
+            setExpandedNames(prev => {
+                const next = new Set(prev);
+                next.delete(seriesEditOldName);
+                next.add(seriesEditNewName);
+                return next;
+            });
+        } catch (error) {
+            console.error("Failed to update series name:", error);
+            alert("Errore nell'aggiornamento del nome della serie.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleTeamTournamentPrint = async (tournament: Tournament) => {
@@ -1101,6 +1176,34 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                 })()}
                                             </div>
                                         )}
+
+                                        {(!groupRepresentsTeamTournament && (tournamentDays.length > 1 || !!tournamentDays[0].giornataName)) && (
+                                            <div className="rounded-2xl border border-slate-200/45 bg-[linear-gradient(135deg,rgba(137,206,255,0.16),rgba(241,245,251,0.92))] p-3 shadow-sm dark:border-white/6 dark:bg-[linear-gradient(135deg,rgba(137,206,255,0.10),rgba(255,255,255,0.03))] dark:text-white sm:p-4">
+                                                <div className="flex items-start justify-between gap-2 sm:items-center sm:gap-3">
+                                                    <span className={teamTournamentInfoPillClass}>
+                                                        Gestione torneo
+                                                    </span>
+                                                    <div className="flex flex-shrink-0 items-center gap-1">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="secondary"
+                                                            onClick={() => {
+                                                                setSeriesEditOldName(displayName);
+                                                                setSeriesEditNewName(displayName);
+                                                                setSeriesEditModalOpen(true);
+                                                            }}
+                                                            className={`${tournamentActionButtonOnDarkClass} !p-1.25 sm:!p-1.5`}
+                                                            aria-label="Modifica Serie"
+                                                        >
+                                                            <PencilIcon />
+                                                        </Button>
+                                                        <Button size="sm" variant="secondary" onClick={() => handlePrintSeries(visibleTournamentDays)} aria-label="Stampa Serie" className={`${tournamentActionButtonOnDarkClass} !p-1.25 sm:!p-1.5`}><PrintIcon /></Button>
+                                                        <Button size="sm" variant="danger" onClick={() => setDeleteAlert({ isOpen: true, type: 'series', idOrName: displayName })} className={`${tournamentActionButtonClass} !p-1.25 sm:!p-1.5`} aria-label="Elimina Serie"><TrashIcon /></Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {visibleTournamentDays.map(day => {
                                             const tournamentDayDisplayName = getTournamentDisplayName(day, tournaments);
                                             const hasInlineActionRow =
@@ -1468,8 +1571,31 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                 )}
             </div>
 
+            <HIGSheet isOpen={seriesEditModalOpen} onClose={() => setSeriesEditModalOpen(false)} title="Modifica Serie">
+                <form onSubmit={handleEditSeriesSubmit} className="space-y-4 px-4 pb-4">
+                     <div>
+                        <label htmlFor="edit-series-name" className="block text-sm font-medium text-gray-500 dark:text-gray-400">Nome Serie (si aggiornerà su tutte le giornate)</label>
+                        <input
+                            type="text"
+                            id="edit-series-name"
+                            value={seriesEditNewName}
+                            onChange={(e) => setSeriesEditNewName(e.target.value)}
+                            className="mt-1 block w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+                            required
+                            disabled={isSubmitting}
+                        />
+                    </div>
+                    <div className="flex justify-end pt-4">
+                        <Button type="button" variant="secondary" onClick={() => setSeriesEditModalOpen(false)} className="mr-2" disabled={isSubmitting}>Annulla</Button>
+                        <Button type="submit" disabled={isSubmitting}>
+                            {isSubmitting ? 'Salvataggio...' : 'Rinomina Serie'}
+                        </Button>
+                    </div>
+                </form>
+            </HIGSheet>
+
             <HIGSheet isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Modifica Torneo">
-                <form onSubmit={handleEditSubmit} className="space-y-4">
+                <form onSubmit={handleEditSubmit} className="space-y-4 px-4 pt-2">
                      <div>
                         <label htmlFor="edit-name" className="block text-sm font-medium text-gray-500 dark:text-gray-400">Nome Torneo</label>
                         <input
@@ -1514,6 +1640,28 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                     </div>
                 </form>
             </HIGSheet>
+            <HIGAlert
+                isOpen={deleteAlert.isOpen}
+                title={deleteAlert.type === 'series' ? "Elimina Serie" : "Elimina Evento"}
+                message="Rimuovi tutti i match e i dati? Puoi scegliere di eliminare anche i giocatori 'isolati' che hanno partecipato solo a questo evento."
+                actions={[
+                    {
+                        label: "Elimina Solo Torneo",
+                        style: "default",
+                        onPress: () => handleConfirmDelete(false)
+                    },
+                    {
+                        label: "Elimina Torneo e Giocatori",
+                        style: "destructive",
+                        onPress: () => handleConfirmDelete(true)
+                    },
+                    {
+                        label: "Annulla",
+                        style: "cancel",
+                        onPress: () => setDeleteAlert({ isOpen: false, type: null, idOrName: null })
+                    }
+                ]}
+            />
         </>
     );
 };

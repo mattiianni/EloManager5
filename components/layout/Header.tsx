@@ -16,7 +16,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, theme, toggleTheme }) =>
         <header 
             className="sticky top-0 z-20 flex items-center justify-between px-4"
             style={{
-                height: 'calc(70px + env(safe-area-inset-top, 0px))', // Slightly increased height for mobile
+                height: 'calc(74px + env(safe-area-inset-top, 0px))', // Slightly increased height for mobile
                 paddingTop: 'env(safe-area-inset-top, 0px)',
                 background: 'var(--ios-thickMaterial)',
                 backdropFilter: 'blur(40px)',

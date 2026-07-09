@@ -2182,10 +2182,29 @@ app.put('/api/tournaments', async (req, res) => {
     }
 });
 
+app.put('/api/tournaments/series/name', async (req, res) => {
+    try {
+        const { oldName, newName } = req.body;
+        if (!oldName || !newName) return res.status(400).json({ message: 'Missing required fields' });
+
+        await sql`
+            UPDATE tournaments 
+            SET giornata_name = ${newName}
+            WHERE (giornata_name = ${oldName} OR name = ${oldName})
+            AND workspace_id = ${req.workspaceId}
+        `;
+
+        res.json({ success: true });
+    } catch (error) {
+        logger.error('Failed to rename series', error);
+        res.status(500).json({ message: 'Errore nell\'aggiornamento del nome serie', error: error.message });
+    }
+});
+
 // DELETE /api/tournaments - Delete tournament
 app.delete('/api/tournaments', async (req, res) => {
     try {
-        const { id } = req.body;
+        const { id, deleteIsolatedPlayers } = req.body;
         if (!id) {
             return res.status(400).json({ message: 'Tournament ID is required' });
         }
@@ -2306,14 +2325,150 @@ app.delete('/api/tournaments', async (req, res) => {
         // Using ON DELETE CASCADE on the matches table will automatically delete them
         await sql`DELETE FROM tournaments WHERE id = ${id} AND workspace_id = ${req.workspaceId};`;
 
-        logger.tournament("delete", id, { revertedPlayers: totalReverted, status: "completed" });
+        let deletedIsolatedPlayersCount = 0;
+        const playerIdsToCheck = new Set(eloHistoryResult.map(h => h.player_id));
+        
+        // Also collect players from matches inside the tournament in case they haven't received a final tournament ELO yet
+        const matchPlayers = await sql`
+            SELECT DISTINCT p_id FROM (
+                SELECT team1_p1_id as p_id FROM matches WHERE tournament_id = ${id} AND workspace_id = ${req.workspaceId}
+                UNION SELECT team1_p2_id FROM matches WHERE tournament_id = ${id} AND workspace_id = ${req.workspaceId}
+                UNION SELECT team2_p1_id FROM matches WHERE tournament_id = ${id} AND workspace_id = ${req.workspaceId}
+                UNION SELECT team2_p2_id FROM matches WHERE tournament_id = ${id} AND workspace_id = ${req.workspaceId}
+            ) as players WHERE p_id IS NOT NULL
+        `;
+        matchPlayers.forEach(p => playerIdsToCheck.add(p.p_id));
+
+        if (deleteIsolatedPlayers && playerIdsToCheck.size > 0) {
+            const playerIdsArray = Array.from(playerIdsToCheck);
+            const deletedPlayers = await sql`
+                DELETE FROM players
+                WHERE workspace_id = ${req.workspaceId}
+                AND id = ANY(${playerIdsArray}::uuid[])
+                AND id NOT IN (
+                    SELECT DISTINCT player_id FROM elo_history WHERE workspace_id = ${req.workspaceId}
+                )
+                AND id NOT IN (
+                    SELECT team1_p1_id FROM matches WHERE team1_p1_id IS NOT NULL AND workspace_id = ${req.workspaceId}
+                    UNION SELECT team1_p2_id FROM matches WHERE team1_p2_id IS NOT NULL AND workspace_id = ${req.workspaceId}
+                    UNION SELECT team2_p1_id FROM matches WHERE team2_p1_id IS NOT NULL AND workspace_id = ${req.workspaceId}
+                    UNION SELECT team2_p2_id FROM matches WHERE team2_p2_id IS NOT NULL AND workspace_id = ${req.workspaceId}
+                )
+                AND id NOT IN (
+                    SELECT (elem)::uuid FROM team_tournament_teams, jsonb_array_elements_text(players) elem WHERE elem ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                )
+                RETURNING id
+            `;
+            deletedIsolatedPlayersCount = deletedPlayers.length;
+            logger.info("Deleted isolated players", { count: deletedIsolatedPlayersCount });
+        }
+
+        logger.tournament("delete", id, { revertedPlayers: totalReverted, deletedIsolatedPlayers: deletedIsolatedPlayersCount, status: "completed" });
         res.json({ 
             message: req.customTeamTournamentMessage || 'Tournament deleted and all ELO ratings reverted successfully',
-            revertedPlayers: totalReverted
+            revertedPlayers: totalReverted,
+            deletedIsolatedPlayers: deletedIsolatedPlayersCount
         });
     } catch (error) {
         logger.error("Failed to delete tournament", error);
         res.status(500).json({ message: 'Failed to delete tournament', error: error.message });
+    }
+});
+
+// DELETE /api/tournaments/series - Delete a series of tournaments by giornata_name
+app.delete('/api/tournaments/series', async (req, res) => {
+    try {
+        const { giornataName, deleteIsolatedPlayers } = req.body;
+        if (!giornataName) {
+            return res.status(400).json({ message: 'Giornata Name is required' });
+        }
+
+        const existingTournaments = await sql`
+            SELECT id
+            FROM tournaments
+            WHERE (giornata_name = ${giornataName} OR name = ${giornataName})
+              AND workspace_id = ${req.workspaceId}
+        `;
+        if (existingTournaments.length === 0) {
+            return res.status(404).json({ message: 'Nessun torneo trovato per questa serie' });
+        }
+
+        let totalReverted = 0;
+        let deletedIsolatedPlayersCount = 0;
+        let allPlayerIdsToCheck = new Set();
+
+        for (const t of existingTournaments) {
+            const id = t.id;
+            
+            const eloHistoryResult = await sql`
+                SELECT player_id, elo_before, elo_after, delta
+                FROM elo_history
+                WHERE event_id = ${id} AND type = 'tournament' AND workspace_id = ${req.workspaceId}
+            `;
+            
+            for (const history of eloHistoryResult) {
+                allPlayerIdsToCheck.add(history.player_id);
+                const currentPlayerResult = await sql`
+                    SELECT current_elo FROM players WHERE id = ${history.player_id}
+                `;
+                const currentElo = currentPlayerResult[0].current_elo;
+                const newElo = currentElo - history.delta;
+                
+                await sql`
+                    UPDATE players
+                    SET current_elo = ${newElo}
+                    WHERE id = ${history.player_id} AND workspace_id = ${req.workspaceId}
+                `;
+                totalReverted++;
+            }
+
+            await sql`DELETE FROM elo_history WHERE event_id = ${id} AND type = 'tournament' AND workspace_id = ${req.workspaceId}`;
+            
+            // Collect players from matches before CASCADE deletes them
+            const matchPlayers = await sql`
+                SELECT DISTINCT p_id FROM (
+                    SELECT team1_p1_id as p_id FROM matches WHERE tournament_id = ${id} AND workspace_id = ${req.workspaceId}
+                    UNION SELECT team1_p2_id FROM matches WHERE tournament_id = ${id} AND workspace_id = ${req.workspaceId}
+                    UNION SELECT team2_p1_id FROM matches WHERE tournament_id = ${id} AND workspace_id = ${req.workspaceId}
+                    UNION SELECT team2_p2_id FROM matches WHERE tournament_id = ${id} AND workspace_id = ${req.workspaceId}
+                ) as players WHERE p_id IS NOT NULL
+            `;
+            matchPlayers.forEach(p => allPlayerIdsToCheck.add(p.p_id));
+
+            await sql`DELETE FROM tournaments WHERE id = ${id} AND workspace_id = ${req.workspaceId};`;
+        }
+
+        if (deleteIsolatedPlayers && allPlayerIdsToCheck.size > 0) {
+            const playerIdsArray = Array.from(allPlayerIdsToCheck);
+            const deletedPlayers = await sql`
+                DELETE FROM players
+                WHERE workspace_id = ${req.workspaceId}
+                AND id = ANY(${playerIdsArray}::uuid[])
+                AND id NOT IN (
+                    SELECT DISTINCT player_id FROM elo_history WHERE workspace_id = ${req.workspaceId}
+                )
+                AND id NOT IN (
+                    SELECT team1_p1_id FROM matches WHERE team1_p1_id IS NOT NULL AND workspace_id = ${req.workspaceId}
+                    UNION SELECT team1_p2_id FROM matches WHERE team1_p2_id IS NOT NULL AND workspace_id = ${req.workspaceId}
+                    UNION SELECT team2_p1_id FROM matches WHERE team2_p1_id IS NOT NULL AND workspace_id = ${req.workspaceId}
+                    UNION SELECT team2_p2_id FROM matches WHERE team2_p2_id IS NOT NULL AND workspace_id = ${req.workspaceId}
+                )
+                AND id NOT IN (
+                    SELECT (elem)::uuid FROM team_tournament_teams, jsonb_array_elements_text(players) elem WHERE elem ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                )
+                RETURNING id
+            `;
+            deletedIsolatedPlayersCount = deletedPlayers.length;
+        }
+
+        res.json({ 
+            message: 'Serie eliminata con successo',
+            revertedPlayers: totalReverted,
+            deletedIsolatedPlayers: deletedIsolatedPlayersCount
+        });
+    } catch (error) {
+        logger.error("Failed to delete tournament series", error);
+        res.status(500).json({ message: 'Failed to delete tournament series', error: error.message });
     }
 });
 

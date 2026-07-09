@@ -1,6 +1,6 @@
 const fs = require('fs');
 const changelog = fs.readFileSync('CHANGELOG.md', 'utf-8');
-const newEntry = `## v5.0.2
+const newEntry = `## v5.0.3
 - Mostrati i punteggi per singolo set anziché il totale games in Dashboard e Profilo Giocatore
 - Aggiunta validazione (minimo 2 lettere per nome e cognome) in creazione e modifica giocatore
 - Rimossi giocatori senza nome dal database di produzione

@@ -1,3 +1,6 @@
+## v5.0.3
+- Apple HIG UI Polish: migliorati i margini dei fogli modali (HIGSheet) e la gestione del wrapping testuale nei pulsanti nativi (HIGButton) per un'estetica premium su dispositivi mobile.
+
 ## v5.0.2
 - Mostrati i punteggi per singolo set anziché il totale games in Dashboard e Profilo Giocatore
 - Aggiunta validazione (minimo 2 lettere per nome e cognome) in creazione e modifica giocatore

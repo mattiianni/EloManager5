@@ -2,7 +2,7 @@
 
 Applicazione full-stack per la gestione di tornei di padel con ranking ELO, statistiche, PDF e isolamento dati per workspace.
 
-Versione documentata: `v5.0.2`
+Versione documentata: `v5.0.3`
 
 ## Stato attuale
 
@@ -17,14 +17,20 @@ I file `pages/_app.tsx`, `pages/_document.tsx`, `pages/index.tsx` e `next.config
 
 ## Routine release
 
-- Versione corrente: `5.0.2`
-- Dalla release successiva si incrementa la patch: `5.0.2`, `4.1.12`, ...
+- Versione corrente: `5.0.3`
+- Dalla release successiva si incrementa la patch: `5.0.3`, `4.1.12`, ...
 - Quando cambia il mese reale, si aggiorna anche il mese visibile nei riferimenti applicativi e documentali (`Gen`, `Feb`, `Mar`, `Apr`, `Mag`, `Giu`, ...).
 - Ad ogni release vanno aggiornati i riferimenti versione nell'app, la documentazione `.md`, il `README`, il backup `.zip` e il dump completo `.txt` del codice.
+
+## Aggiornamenti v5.0.3
+
+- Versione prodotto aggiornata a `5.0.3`.
+- **Apple HIG UI Polish:** migliorati i margini dei fogli modali (`HIGSheet`) e la gestione del wrapping testuale nei pulsanti nativi (`HIGButton`) per un'estetica premium su dispositivi mobile.
 
 ## Aggiornamenti v5.0.2
 
 - Versione prodotto aggiornata a `5.0.2`.
+- **Integrazione ELO-Playtomic:** introdotta una rigorosa corrispondenza bidirezionale tra il punteggio ELO e i livelli standard Playtomic (visibile sia in creazione che in modifica giocatore).
 - Deploy: configurato deploy serverless su Vercel con passaggio a `bcryptjs` e configurazione `vercel.json` con filesystem routing.
 - Admin: pillola rossa per login non-admin per facilitare il monitoraggio degli accessi.
 - UI Layout: posizionato il nome del workspace sotto data e versione in visualizzazione desktop.

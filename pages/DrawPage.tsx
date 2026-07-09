@@ -1711,7 +1711,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
                     onClose={() => setIsEditTeamTournamentModalOpen(false)}
                     title="Modifica Dati Base"
                 >
-                    <form onSubmit={handleUpdateTeamTournamentConfig} className="space-y-4">
+                    <form onSubmit={handleUpdateTeamTournamentConfig} className="space-y-4 px-4 pb-6 pt-2">
                         <div>
                             <label className="block text-sm font-medium text-gray-500 dark:text-gray-400">Nome Torneo</label>
                             <input

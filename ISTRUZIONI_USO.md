@@ -16,7 +16,8 @@ In `Giocatori` puoi:
   - nome
   - cognome
   - posizione in campo
-- modificare nome, cognome, posizione ed ELO
+  - ELO iniziale (con sincronizzazione immediata bidirezionale del livello Playtomic)
+- modificare nome, cognome, posizione, ed ELO/Playtomic
 - eliminare un giocatore
 - aprire il profilo giocatore
 - stampare il riepilogo profili

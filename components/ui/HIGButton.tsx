@@ -150,11 +150,11 @@ export const HIGButton: React.FC<HIGButtonProps> = ({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    height: variant === 'plain' ? 'auto' : sizePreset.height,
+    minHeight: variant === 'plain' ? 'auto' : sizePreset.height,
     padding:
       variant === 'plain'
         ? '4px 8px'
-        : `0 ${sizePreset.paddingH}px`,
+        : `8px ${sizePreset.paddingH}px`,
     width: fullWidth ? '100%' : undefined,
     boxSizing: 'border-box',
 
@@ -163,9 +163,10 @@ export const HIGButton: React.FC<HIGButtonProps> = ({
       "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif",
     fontSize: sizePreset.fontSize,
     fontWeight: sizePreset.fontWeight,
-    lineHeight: 1,
+    lineHeight: 1.2,
     textDecoration: 'none',
-    whiteSpace: 'nowrap',
+    whiteSpace: 'normal',
+    wordBreak: 'break-word',
 
     // Variant visuals
     ...vStyles,

@@ -6,6 +6,7 @@ import { Player, SetScore, Tournament, Match, TournamentType, TournamentStanding
 import Card from '../components/ui/Card.tsx';
 import Button from '../components/ui/Button.tsx';
 import { HIGSheet } from '../components/ui/HIGSheet';
+import { HIGAlert } from '../components/ui/HIGAlert';
 import MatchScoreInput from '../components/ui/MatchScoreInput.tsx';
 import { TrashIcon, ChevronDownIcon, PencilIcon, PrintIcon } from '../components/ui/Icons.tsx';
 import { printTournamentReport, printTorneoLiberoComplete, printBeatTheBoxBlank, printBeatTheBoxComplete, printGironiTournament } from '../services/printService.ts';
@@ -197,6 +198,10 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
  const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
  const [editScores, setEditScores] = useState<Record<string, SetScore[]>>({});
+ const [deleteAlert, setDeleteAlert] = useState<{
+     isOpen: boolean;
+     tournamentId: string | null;
+ }>({ isOpen: false, tournamentId: null });
  
  // Round Robin + Finali specific states
  const [showFinalsStandingsModal, setShowFinalsStandingsModal] = useState(false);
@@ -828,9 +833,14 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  };
 
  const handleDeleteTournament = (tournamentId: string) => {
- if (window.confirm('Sei sicuro di voler eliminare questa giornata del torneo? Verranno eliminati anche tutti i match associati.')) {
- deleteTournament(tournamentId);
- }
+     setDeleteAlert({ isOpen: true, tournamentId });
+ };
+ 
+ const handleConfirmDeleteTournament = async (cascade: boolean) => {
+     if (deleteAlert.tournamentId) {
+         await deleteTournament(deleteAlert.tournamentId, cascade);
+     }
+     setDeleteAlert({ isOpen: false, tournamentId: null });
  };
  
  const handleSubmit = async (e: React.FormEvent) => {
@@ -1649,7 +1659,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  }} 
  title={editingTournament?.status === 'scheduled' ?"Inserisci Risultati" :"Modifica Risultati"}
  >
- <form onSubmit={handleEditScoresSubmit}>
+ <form onSubmit={handleEditScoresSubmit} className="px-4 pb-4 pt-2">
  {editingTournament?.type === TournamentType.RoundRobinFinali && editingTournament?.status === 'scheduled' && (
  <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
  <h3 className="font-semibold text-gray-900 dark:text-white">Round Robin - Fase a Gironi</h3>
@@ -1852,7 +1862,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  });
  })()}
  </div>
- <div className="flex justify-end pt-4 mt-4 border-t border-gray-200 dark:border-gray-700 px-4">
+ <div className="flex justify-end pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
  <Button type="button" variant="secondary" onClick={() => {
  setEditingTournament(null);
  setIsInFinalsPhase(false);
@@ -1883,7 +1893,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  onClose={() => setShowFinalsStandingsModal(false)} 
  title="Round Robin Completato!"
  >
- <div className="space-y-4">
+ <div className="space-y-4 px-4 pb-6 pt-2">
  <div className="p-4 bg-green-50 dark:bg-green-900 rounded-lg">
  <h3 className="font-semibold text-green-800 dark:text-green-200 mb-2">Classifica Round Robin</h3>
  <div className="space-y-2">
@@ -1930,7 +1940,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  onClose={() => setShowGironiStandingsModal(false)} 
  title="Gironi Completati!"
  >
- <div className="space-y-4">
+ <div className="space-y-4 px-4 pb-6 pt-2">
  <div className="p-4 bg-green-50 dark:bg-green-900 rounded-lg">
  <h3 className="font-semibold text-green-800 dark:text-green-200 mb-2">Classifiche Gironi</h3>
  <div className="space-y-4">
@@ -2006,7 +2016,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  }} 
  title="Finali - Round Robin + Finali"
  >
- <div className="space-y-4">
+ <div className="space-y-4 px-4 pb-6 pt-2">
  <div className="mb-4 p-3 bg-emerald-50 dark:bg-emerald-900 rounded-lg">
  <h3 className="font-semibold text-emerald-800 dark:text-emerald-200">Fase Finale</h3>
  <p className="text-sm text-emerald-700 dark:text-emerald-300">
@@ -2139,7 +2149,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  onClose={() => setShowBeatBoxStandingsModal(false)} 
  title="📦 Classifiche Box Completate"
  >
- <div className="space-y-4">
+ <div className="space-y-4 px-4 pb-6 pt-2">
  {beatBoxStandings.map((boxStanding, boxIdx) => (
  <div key={boxIdx} className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
  <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Box {boxStanding.boxNumber}</h4>
@@ -2211,7 +2221,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  }} 
  title="📦 Beat the Box - Semifinali"
  >
- <div className="space-y-4">
+ <div className="space-y-4 px-4 pb-6 pt-2">
  <div className="mb-4 p-3 bg-purple-50 dark:bg-purple-900 rounded-lg">
  <h3 className="font-semibold text-purple-800 dark:text-purple-200">Semifinali</h3>
  <p className="text-sm text-purple-700 dark:text-purple-300">
@@ -2333,7 +2343,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  }} 
  title="📦 Beat the Box - Finali"
  >
- <div className="space-y-4">
+ <div className="space-y-4 px-4 pb-6 pt-2">
  <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900 rounded-lg">
  <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">Fase Finale</h3>
  <p className="text-sm text-yellow-700 dark:text-yellow-300">
@@ -2422,7 +2432,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  onClose={() => !isSubmitting && setShowBeatBoxCompleteConfirm(false)}
  title="Confermi il completamento del torneo?"
  >
- <div className="space-y-3">
+ <div className="space-y-3 px-4 pb-6 pt-2">
  <p className="text-sm text-gray-600 dark:text-gray-300">
  Verranno salvate tutte le partite finali e aggiornati gli ELO.
  </p>
@@ -2607,7 +2617,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  }} 
  title="🏆 Gironi + Fase Finale - Semifinali"
  >
- <div className="space-y-4">
+ <div className="space-y-4 px-4 pb-6 pt-2">
  <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
  <h3 className="font-semibold text-gray-900 dark:text-white">Semifinali</h3>
  <p className="text-sm text-gray-700 dark:text-gray-300">
@@ -2733,7 +2743,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  }} 
  title="🏆 Gironi + Fase Finale - Finali"
  >
- <div className="space-y-4">
+ <div className="space-y-4 px-4 pb-6 pt-2">
  <div className="mb-4 p-3 bg-green-50 dark:bg-green-900 rounded-lg">
  <h3 className="font-semibold text-green-800 dark:text-green-200">Fase Finale</h3>
  <p className="text-sm text-green-700 dark:text-green-300">
@@ -2882,9 +2892,31 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  </Button>
  </div>
  </div>
- </HIGSheet>
- </div>
- );
+             </HIGSheet>
+            <HIGAlert
+                isOpen={deleteAlert.isOpen}
+                title="Elimina Giornata/Torneo"
+                message="Vuoi eliminare questa voce? I match e le statistiche relative verranno rimossi. Puoi scegliere se eliminare anche i giocatori 'isolati' che hanno partecipato SOLO a questo evento."
+                actions={[
+                    {
+                        label: "Annulla",
+                        style: "cancel",
+                        onPress: () => setDeleteAlert({ isOpen: false, tournamentId: null })
+                    },
+                    {
+                        label: "Elimina solo il torneo/giornata",
+                        style: "default",
+                        onPress: () => handleConfirmDeleteTournament(false)
+                    },
+                    {
+                        label: "Elimina torneo e giocatori isolati",
+                        style: "destructive",
+                        onPress: () => handleConfirmDeleteTournament(true)
+                    }
+                ]}
+            />
+        </div>
+    );
 };
 
 export default MatchesPage;

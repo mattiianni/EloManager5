@@ -15,6 +15,7 @@ Cosa fa in pratica:
 - *7 formati torneo* pronti (TorneOtto, Americano, Beat the Box, Round Robin + Finali, Gironi, Torneo Libero, Torneo a Squadre)
 - *Sorteggio coppie intelligente* con 4 modalita (casuale, bilanciato forte+debole, teste di serie, manuale)
 - *Classifica ELO automatica* dopo ogni giornata - ogni partecipante ha un rating basato sulle partite disputate in coppia
+- *Integrazione Playtomic nativa* - converte rigorosamente l'ELO in livello Playtomic (e viceversa), in modo che chiunque capisca immediatamente il proprio livello reale
 - *Profilo completo* per ognuno: statistiche, compagni e avversari frequenti, grafico andamento, storico giornate
 - *Stampa PDF* di tutto: classifiche, profili, tabelloni coppie, schede match vuote da compilare al campo
 - *Torneo a Squadre* con round robin, fase finale, riepilogo e stampe dedicate
@@ -35,7 +36,7 @@ Fammi sapere!
 
 Ciao! Ho sviluppato un'app per gestire tornei di padel amatoriale: *Padel ELO Manager*.
 
-7 formati torneo, incluso il Torneo a Squadre, sorteggio coppie intelligente (bilanciato per livello), classifica ELO automatica, statistiche complete e stampa PDF. Funziona dal browser, zero installazione - apri un link e i dati sono in cloud.
+7 formati torneo, incluso il Torneo a Squadre, sorteggio coppie intelligente (bilanciato per livello), classifica ELO automatica con corrispondenza nativa ai livelli Playtomic, statistiche complete e stampa PDF. Funziona dal browser, zero installazione - apri un link e i dati sono in cloud.
 
 Ti interessa una demo veloce? 5 minuti e ti mostro tutto.
 
@@ -64,7 +65,7 @@ L'app gestisce l'intero ciclo di una serata di padel, dalla formazione delle cop
 
 - SORTEGGIO INTELLIGENTE DELLE COPPIE: 4 modalita - casuale, bilanciato per ELO (forte+debole per partite equilibrate), teste di serie, manuale. Coppie equilibrate in un click.
 
-- SISTEMA ELO PROFESSIONALE: lo stesso algoritmo di rating usato negli scacchi, adattato al padel in coppia. Dopo ogni partita coppia vs coppia, il rating individuale si aggiorna automaticamente. Calcolo basato sul K=16 universale per garantire integrità matematica, ed ELO isolato per serie di tornei.
+- SISTEMA ELO PROFESSIONALE CON INTEGRAZIONE PLAYTOMIC: lo stesso algoritmo di rating usato negli scacchi, adattato al padel in coppia. Il punteggio ELO viene rigorosamente convertito e affiancato al Livello Playtomic, permettendo a tutti di capire immediatamente quanto sono forti. Dopo ogni partita coppia vs coppia, il rating individuale si aggiorna automaticamente. Calcolo basato sul K=16 universale per garantire integrità matematica, ed ELO isolato per serie di tornei.
 
 - PROFILO COMPLETO: per ogni partecipante - partite in coppia vinte/perse, compagni e avversari frequenti con percentuali di vittoria, grafico andamento ELO, storico giornata per giornata, form ultime 5 partite.
 
@@ -115,6 +116,7 @@ In pratica fa tutto da sola:
 - Gestisce 7 formati torneo diversi, incluso il Torneo a Squadre (Americano, Beat the Box, TorneOtto, ecc.)
 - Sorteggia le coppie in modo intelligente (bilanciato per livello, niente piu coppie a caso dove i forti giocano sempre insieme)
 - Calcola una classifica ELO automatica basata sulle partite in coppia
+- Ha un'integrazione con i livelli Playtomic, convertendo esattamente l'ELO in livello Playtomic così tutti capiscono subito quanto sono forti
 - Tiene traccia di ogni statistica: con chi hai giocato, contro chi hai perso, il tuo andamento nel tempo
 - Stampa classifiche, profili, tabelloni coppie - tutto in PDF pronto per la bacheca
 - Ogni circolo puo personalizzare tornei, icona e brand
