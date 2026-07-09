@@ -5586,13 +5586,16 @@ export const printBeatTheBoxComplete = (
             bgColor = '#f5f5f5';
         }
         
-        return `
+        return {
+            order: idx === 0 ? 3 : (idx === 1 ? 2 : 1),
+            html: `
             <tr style="height: 20px;">
                 <td colspan="3" style="background: ${bgColor}; padding: 5px 6px; font-size: 11px; font-weight: bold; text-align: center; height: 24px;">${matchTitle}</td>
             </tr>
             ${generateMatchRow(match)}
-        `;
-    }).join('');
+        `
+        };
+    }).sort((a, b) => a.order - b.order).map(x => x.html).join('');
     
     const finalsHtml = finalMatches.length > 0 ? `
         <div class="section-block">

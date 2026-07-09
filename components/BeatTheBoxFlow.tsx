@@ -13,6 +13,7 @@ import {
  getAllPlayersFromBoxes,
  BoxData,
  BoxStanding,
+ PlayoffType
 } from '../services/beatTheBoxService.ts';
 import Card from './ui/Card.tsx';
 import Button from './ui/Button.tsx';
@@ -31,7 +32,7 @@ interface BeatTheBoxFlowProps {
  giornataName?: string; // Nome della serie (per tornei multi-giornata)
 }
 
-type BeatTheBoxStep = 'animating' | 'boxes' | 'semifinals' | 'finals' | 'results';
+type BeatTheBoxStep = 'playoff_selection' | 'animating' | 'boxes' | 'semifinals' | 'finals' | 'results';
 
 const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  pairs,
@@ -43,7 +44,8 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
 }) => {
  const { addMultipleMatches, getPlayerById } = usePadelStore();
  
- const [step, setStep] = useState<BeatTheBoxStep>('animating');
+ const [step, setStep] = useState<BeatTheBoxStep>((pairs.length === 6 || pairs.length === 8) ? 'playoff_selection' : 'animating');
+ const [playoffType, setPlayoffType] = useState<PlayoffType>(pairs.length >= 10 ? 'semifinals' : 'finals_only');
  const [boxesData, setBoxesData] = useState<BoxData[]>([]);
  const [allMatches, setAllMatches] = useState<Match[]>([]);
  const [boxStandings, setBoxStandings] = useState<BoxStanding[]>([]);
@@ -431,7 +433,8 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  numBoxes,
  boxStandings,
  tournamentDate,
- { sf1Winner, sf2Winner }
+ { sf1Winner, sf2Winner },
+ playoffType
  );
  
  setFinalMatches(finals.map((m, i) => ({
@@ -633,15 +636,14 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  </div>
  ))}
  <p className="text-gray-600 dark:text-gray-400 text-center">
- I primi 2 classificati di ogni box (evidenziati in verde) sono qualificati. Vuoi procedere con le {numBoxes >= 4 ? 'semifinali' : 'finali'}?
+ Vuoi procedere con le {playoffType === 'semifinals' ? 'semifinali' : 'finali'}?
  </p>
  <div className="flex gap-3 pt-4">
  <Button variant="secondary" onClick={() => setShowBoxStandingsModal(false)} className="flex-1">Annulla</Button>
  <Button className="flex-1" onClick={() => {
  setShowBoxStandingsModal(false);
- // Decidi prossimo step: semis (>=4 box) o finali
- if (numBoxes >= 4) {
- const { semifinals } = createFinalsMatches(numBoxes, boxStandings, tournamentDate);
+ if (playoffType === 'semifinals') {
+ const { semifinals } = createFinalsMatches(numBoxes, boxStandings, tournamentDate, undefined, playoffType);
  if (semifinals) {
  setSemifinalMatches(semifinals.map((m, i) => ({
  ...m,
@@ -652,7 +654,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  setStep('semifinals');
  }
  } else {
- const { finals } = createFinalsMatches(numBoxes, boxStandings, tournamentDate);
+ const { finals } = createFinalsMatches(numBoxes, boxStandings, tournamentDate, undefined, playoffType);
  setFinalMatches(finals.map((m, i) => ({
  ...m,
  id: `final-${i}`,
@@ -662,7 +664,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  setStep('finals');
  }
  }}>
- Procedi {numBoxes >= 4 ? 'alle Semifinali' : 'alle Finali'}
+ Procedi {playoffType === 'semifinals' ? 'alle Semifinali' : 'alle Finali'}
  </Button>
  </div>
  </div>
@@ -672,6 +674,44 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  
  // Rendering fasi
  
+ if (step === 'playoff_selection') {
+ return (
+ <Card title="Scelta Fase Conclusiva">
+ <div className="space-y-6 px-4 py-4 text-center">
+ <p className="text-gray-600 dark:text-gray-400 mb-6">
+ Scegli il formato della fase finale del torneo Beat the Box.
+ </p>
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+ <div 
+ className="border-2 rounded-xl p-6 cursor-pointer hover:border-ios-blue hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all border-gray-200 dark:border-gray-700"
+ onClick={() => {
+ setPlayoffType('finals_only');
+ setStep('animating');
+ }}
+ >
+ <h3 className="text-xl font-bold mb-2">Solo Finali</h3>
+ <p className="text-sm text-gray-500 dark:text-gray-400">
+ Dopo i gironi si giocano direttamente le finali (più veloce).
+ </p>
+ </div>
+ <div 
+ className="border-2 rounded-xl p-6 cursor-pointer hover:border-ios-blue hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all border-gray-200 dark:border-gray-700"
+ onClick={() => {
+ setPlayoffType('semifinals');
+ setStep('animating');
+ }}
+ >
+ <h3 className="text-xl font-bold mb-2">Semifinali + Finali</h3>
+ <p className="text-sm text-gray-500 dark:text-gray-400">
+ Le migliori coppie si affrontano prima in semifinale (formato completo).
+ </p>
+ </div>
+ </div>
+ </div>
+ </Card>
+ );
+ }
+
  if (step === 'animating') {
  return <BeatTheBoxAnimation />;
  }

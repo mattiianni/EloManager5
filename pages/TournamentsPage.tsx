@@ -68,7 +68,7 @@ const processBeatTheBoxData = (matches: Match[], getPlayerById: (id: string) => 
     let semifinalMatches: Match[] = [];
     let finalMatches: Match[] = [];
 
-    if (numBoxes >= 4 && remainingMatches.length >= 2) {
+    if (remainingMatches.length >= 4) {
         semifinalMatches = remainingMatches.slice(0, 2);
         finalMatches = remainingMatches.slice(2);
     } else {
@@ -514,10 +514,10 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                     });
                 });
                 
-                printBeatTheBoxBlank(tournament, boxes, getPlayerById);
+                printBeatTheBoxBlank(tournament, boxes, getPlayerById as any);
             } else {
                 // Print complete report for completed tournaments
-                const { boxes, boxStandings, semifinalMatches, finalMatches, individualStandings } = processBeatTheBoxData(tournamentMatches, getPlayerById);
+                const { boxes, boxStandings, semifinalMatches, finalMatches, individualStandings } = processBeatTheBoxData(tournamentMatches, getPlayerById as any);
                 
                 // USA SEMPRE I DATI RICALCOLATI (stesso algoritmo dell'UI)
                 printBeatTheBoxComplete(tournament, boxes, boxStandings, semifinalMatches, finalMatches, individualStandings, getPlayerById, displayName);
@@ -579,9 +579,9 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
         } else if (tournament.type === TournamentType.RoundRobinFinali && tournamentMatches.length > 2) {
             // For Round Robin + Finali, calculate based on finals results
             const roundRobinMatchCount = tournamentMatches.length - 2;
-            standings = calculateFinalStandingsForRoundRobinFinali(tournamentMatches, roundRobinMatchCount, getPlayerById);
+            standings = calculateFinalStandingsForRoundRobinFinali(tournamentMatches, roundRobinMatchCount, getPlayerById as any);
         } else {
-            standings = calculateTournamentStandings(tournamentMatches, getPlayerById);
+            standings = calculateTournamentStandings(tournamentMatches, getPlayerById as any);
         }
         
         // For Americano tournaments, we need to get the americanoFields parameter
@@ -613,7 +613,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
         const displayName = seriesRoot.name;
 
         if (firstDay.type === TournamentType.BeatTheBox) {
-            const { boxes, boxStandings, semifinalMatches, finalMatches, individualStandings } = processBeatTheBoxData(seriesMatches, getPlayerById);
+            const { boxes, boxStandings, semifinalMatches, finalMatches, individualStandings } = processBeatTheBoxData(seriesMatches, getPlayerById as any);
             printBeatTheBoxComplete(seriesRoot, boxes, boxStandings, semifinalMatches, finalMatches, individualStandings, getPlayerById, displayName);
             return;
         }
@@ -623,9 +623,9 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
             standings = calculateAmericanoStandings(seriesMatches);
         } else if (firstDay.type === TournamentType.RoundRobinFinali && seriesMatches.length > 2) {
             const roundRobinMatchCount = seriesMatches.length - 2;
-            standings = calculateFinalStandingsForRoundRobinFinali(seriesMatches, roundRobinMatchCount, getPlayerById);
+            standings = calculateFinalStandingsForRoundRobinFinali(seriesMatches, roundRobinMatchCount, getPlayerById as any);
         } else {
-            standings = calculateTournamentStandings(seriesMatches, getPlayerById);
+            standings = calculateTournamentStandings(seriesMatches, getPlayerById as any);
         }
 
         const americanoFields = firstDay.type === TournamentType.Americano ? firstDay.americanoFields : undefined;
