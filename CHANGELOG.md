@@ -1,3 +1,9 @@
+## v5.0.4
+- Beat the Box: Implementata l'opzione "Solo Finali" o "Semifinali + Finali" per i tornei a 6 e 8 coppie.
+- Beat the Box: Aggiunta logica di accoppiamento meritocratico per le semifinali, evitando l'incrocio tra squadre dello stesso girone.
+- Beat the Box: Risolto un bug nella partita di consolazione per 3 box, garantendo matematicamente che i giocatori dello stesso girone non giochino mai insieme.
+- PDF: Corretto l'ordinamento delle partite della fase finale e aggiunto il raggruppamento esplicito delle "SEMIFINALI".
+
 ## v5.0.3
 - Apple HIG UI Polish: migliorati i margini dei fogli modali (HIGSheet) e la gestione del wrapping testuale nei pulsanti nativi (HIGButton) per un'estetica premium su dispositivi mobile.
 
