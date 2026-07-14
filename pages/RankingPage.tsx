@@ -157,39 +157,46 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
                 
                 const winPercentage = matchesPlayed > 0 ? (matchesWon / matchesPlayed) * 100 : 0;
                 
-                let lastDelta = null;
+                let tournamentEloEntries: import('../types.ts').EloHistoryEntry[] = [];
                 if (selectedTournamentId) {
-                    let tournamentEloEntries: import('../types.ts').EloHistoryEntry[] = [];
                     if (isTeamTournament) {
                         tournamentEloEntries = eloHistory.filter(e => 
                             e.playerId === player.id && selectedTeamTournamentMatchdayIds.includes(e.eventId)
                         ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
                     } else {
                         const tournamentIds = tournaments.filter(t => (t.giornataName || t.name) === selectedTournamentId).map(t => t.id);
-                        tournamentEloEntries = eloHistory.filter(e => 
-                            e.playerId === player.id && tournamentIds.includes(e.eventId)
-                        ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                        tournamentEloEntries = eloHistory.filter(e => {
+                            if (e.playerId !== player.id) return false;
+                            if (e.type === 'tournament') return tournamentIds.includes(e.eventId);
+                            if (e.type === 'match') {
+                                const match = matches.find(m => m.id === e.eventId);
+                                return match && match.tournamentId && tournamentIds.includes(match.tournamentId);
+                            }
+                            return false;
+                        }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
                     }
-                    lastDelta = tournamentEloEntries.length > 0 ? tournamentEloEntries[0].delta : null;
+                }
+
+                let lastDelta = null;
+                if (selectedTournamentId) {
+                    if (tournamentEloEntries.length > 0) {
+                        const lastDate = new Date(tournamentEloEntries[0].date).toLocaleDateString('it-IT');
+                        lastDelta = tournamentEloEntries
+                            .filter(e => new Date(e.date).toLocaleDateString('it-IT') === lastDate)
+                            .reduce((sum, e) => sum + e.delta, 0);
+                    }
                 } else {
                     const lastEloEntry = sortedEventsByDate.find(e => e.playerId === player.id);
-                    lastDelta = lastEloEntry ? lastEloEntry.delta : null;
+                    if (lastEloEntry) {
+                        const lastDate = new Date(lastEloEntry.date).toLocaleDateString('it-IT');
+                        lastDelta = sortedEventsByDate
+                            .filter(e => e.playerId === player.id && new Date(e.date).toLocaleDateString('it-IT') === lastDate)
+                            .reduce((sum, e) => sum + e.delta, 0);
+                    }
                 }
 
                 let displayElo = player.currentElo;
                 if (selectedTournamentId) {
-                    let tournamentEloEntries: import('../types.ts').EloHistoryEntry[] = [];
-                    if (isTeamTournament) {
-                        tournamentEloEntries = eloHistory.filter(e => 
-                            e.playerId === player.id && selectedTeamTournamentMatchdayIds.includes(e.eventId)
-                        ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-                    } else {
-                        const tournamentIds = tournaments.filter(t => (t.giornataName || t.name) === selectedTournamentId).map(t => t.id);
-                        tournamentEloEntries = eloHistory.filter(e => 
-                            e.playerId === player.id && tournamentIds.includes(e.eventId)
-                        ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-                    }
-                    
                     if (tournamentEloEntries.length > 0) {
                         const initialElo = 1500;
                         const tournamentDelta = tournamentEloEntries.reduce((sum, entry) => sum + entry.delta, 0);

@@ -1,5 +1,9 @@
+## v5.0.8
+- Fix: Nelle classifiche filtrate per torneo, le variazioni ELO erano assenti per i tornei singoli a causa di un'errata associazione degli ID partita; ora viene mostrata la variazione corretta e viene raggruppata l'intera giornata.
+- Fix: Risolto un bug critico che bloccava la stampa PDF delle classifiche.
+- UI: Sostituito il nome del torneo radice (es. "TorneOtto Inverno 2025") con il nome della specifica giornata (es. "Beat the Box", "Americano", ecc.) nello storico variazioni UI e PDF.
+
 ## v5.0.7
-- UI: Ripristinata correttamente la visualizzazione del logo chiaro in modalità Dark e logo scuro in modalità Light.
 
 ## v5.0.6
 - Risolto crash in /api/tournaments/complete

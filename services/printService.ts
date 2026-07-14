@@ -719,6 +719,16 @@ export const printRanking = (
             let groupKey = '';
             const dateStr = new Date(entry.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
+            const getTournDesc = (tournament: any) => {
+                if (!tournament) return 'Giornata Torneo';
+                if (selectedTournamentId) {
+                    if (tournament.type === 'Torneo Libero' && tournament.giornataName) return tournament.giornataName;
+                    return tournament.type;
+                }
+                if (tournament.type === 'Torneo Libero' && tournament.giornataName) return `${tournament.giornataName} (${tournament.name})`;
+                return `${tournament.type} (${tournament.name})`;
+            };
+
             if (entry.type === 'manual') {
                 description = 'Aggiornamento Manuale';
                 groupKey = `manual_${entry.eventId}`;
@@ -727,13 +737,13 @@ export const printRanking = (
                 groupKey = `team_${entry.eventId}`;
             } else if (entry.type === 'tournament') {
                 const tournament = tournaments.find(t => t.id === entry.eventId);
-                description = entry.sourceLabel || (tournament ? tournament.name : 'Giornata Torneo');
+                description = getTournDesc(tournament);
                 groupKey = `tourn_${entry.eventId}`;
             } else if (entry.type === 'match') {
                 const match = matches.find(m => m.id === entry.eventId);
                 if (match && match.tournamentId) {
                     const tournament = tournaments.find(t => t.id === match.tournamentId);
-                    description = entry.sourceLabel || (tournament ? tournament.name : 'Giornata Torneo');
+                    description = getTournDesc(tournament);
                     groupKey = `tourn_grouped_${match.tournamentId}_${dateStr}`;
                 } else {
                     description = 'Partita Amichevole';
@@ -783,7 +793,7 @@ export const printRanking = (
         `;
     });
 
-    const tableRowsStr = playerRowsArr.join('');
+    const tableRowsStr = tableRows.join('');
 
     // Get tournament info if filtered (by SERIES KEY)
     const selectedTournament = selectedTournamentId 
@@ -810,7 +820,7 @@ export const printRanking = (
                 </tr>
             `;
         }
-        tableRowsWithSeparator += playerRowsArr[idx];
+        tableRowsWithSeparator += tableRows[idx];
     });
 
     const content = `
