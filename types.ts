@@ -61,6 +61,8 @@ export interface Tournament {
     playoffType?: string;
     teamTournamentPhase?: 'round_robin' | TeamTournamentPlayoffPhase | null;
     isBye?: boolean; // Se la partita del tabellone a eliminazione diretta è un BYE
+    parentTournamentName?: string | null; // Nome torneo padre (per tornei figlio di un TorneOtto)
+    dayLabel?: string | null; // Etichetta giornata (backfill column - da NON usare per display, usare giornataName||type)
 }
 
 export interface EloHistoryEntry {
