@@ -87,8 +87,12 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
                     }
                 });
             } else {
+                const normSelected = selectedTournamentId.trim().toLowerCase();
                 const tournamentIds = tournaments
-                    .filter(t => (t.giornataName || t.name) === selectedTournamentId)
+                    .filter(t => 
+                        (t.giornataName && t.giornataName.trim().toLowerCase() === normSelected) || 
+                        (t.name && t.name.trim().toLowerCase() === normSelected)
+                    )
                     .map(t => t.id);
                 const tournamentMatches = matches.filter(m => m.tournamentId && tournamentIds.includes(m.tournamentId));
                 tournamentMatches.forEach(m => {
@@ -107,7 +111,11 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
                     
                     if (selectedTournamentId) {
                         const tournament = tournaments.find(t => t.id === m.tournamentId);
-                        return tournament && (tournament.giornataName || tournament.name) === selectedTournamentId;
+                        const normSelected = selectedTournamentId.trim().toLowerCase();
+                        return tournament && (
+                            (tournament.giornataName && tournament.giornataName.trim().toLowerCase() === normSelected) || 
+                            (tournament.name && tournament.name.trim().toLowerCase() === normSelected)
+                        );
                     }
                     
                     if (!m.tournamentId) return true;
@@ -163,8 +171,13 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
                         tournamentEloEntries = eloHistory.filter(e => 
                             e.playerId === player.id && selectedTeamTournamentMatchdayIds.includes(e.eventId)
                         ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                    } else {
-                        const tournamentIds = tournaments.filter(t => (t.giornataName || t.name) === selectedTournamentId).map(t => t.id);
+                        const normSelected = selectedTournamentId.trim().toLowerCase();
+                        const tournamentIds = tournaments
+                            .filter(t => 
+                                (t.giornataName && t.giornataName.trim().toLowerCase() === normSelected) || 
+                                (t.name && t.name.trim().toLowerCase() === normSelected)
+                            )
+                            .map(t => t.id);
                         tournamentEloEntries = eloHistory.filter(e => {
                             if (e.playerId !== player.id) return false;
                             if (e.type === 'tournament') return tournamentIds.includes(e.eventId);
@@ -220,7 +233,11 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
                         )).length;
                         presencePercentage = (playerGiornateCount / tournamentGiornate.length) * 100;
                     } else {
-                        const tournamentRecords = tournaments.filter(t => (t.giornataName || t.name) === selectedTournamentId);
+                        const normSelected = selectedTournamentId.trim().toLowerCase();
+                        const tournamentRecords = tournaments.filter(t => 
+                            (t.giornataName && t.giornataName.trim().toLowerCase() === normSelected) || 
+                            (t.name && t.name.trim().toLowerCase() === normSelected)
+                        );
                         playerGiornateCount = tournamentRecords.filter(tournamentRecord => {
                             return matches.some(m => 
                                 m.tournamentId === tournamentRecord.id && 
@@ -384,8 +401,12 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
                                         return selectedTeamTournamentMatchdayIds.includes(entry.eventId);
                                     }
                                     
+                                    const normSelected = selectedTournamentId.trim().toLowerCase();
                                     const tournamentIds = tournaments
-                                        .filter(t => (t.giornataName || t.name) === selectedTournamentId)
+                                        .filter(t => 
+                                            (t.giornataName && t.giornataName.trim().toLowerCase() === normSelected) || 
+                                            (t.name && t.name.trim().toLowerCase() === normSelected)
+                                        )
                                         .map(t => t.id);
                                     
                                     if (entry.type === 'tournament') {
@@ -407,23 +428,38 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
                             let groupKey = '';
                             const dateStr = new Date(entry.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
+                            const getTournDesc = (tournament: any) => {
+                                if (!tournament) return 'Giornata Torneo';
+                                if (selectedTournamentId) {
+                                    return tournament.name;
+                                } else {
+                                    if (tournament.giornataName) {
+                                        return `${tournament.name} (${tournament.giornataName})`;
+                                    }
+                                    return tournament.name;
+                                }
+                            };
+
                             if (entry.type === 'manual') {
                                 description = 'Aggiornamento Manuale';
                                 groupKey = `manual_${entry.eventId}`;
                             } else if (entry.type === 'team_tournament_matchday') {
-                                description = `Giornata Torneo ${entry.sourceLabel || ''}`.trim();
+                                description = entry.sourceLabel && entry.sourceLabel.trim().length > 0
+                                    ? entry.sourceLabel.trim()
+                                    : 'Giornata Torneo';
                                 groupKey = `team_${entry.eventId}`;
                             } else if (entry.type === 'tournament') {
                                 const tournament = tournaments.find(t => t.id === entry.eventId);
-                                description = entry.sourceLabel || (tournament ? tournament.name : 'Giornata Torneo');
+                                description = getTournDesc(tournament);
                                 groupKey = `tourn_${entry.eventId}`;
                             } else if (entry.type === 'match') {
                                 const match = matches.find(m => m.id === entry.eventId);
                                 if (match && match.tournamentId) {
                                     const tournament = tournaments.find(t => t.id === match.tournamentId);
-                                    description = entry.sourceLabel || (tournament ? tournament.name : 'Giornata Torneo');
+                                    description = getTournDesc(tournament);
                                     groupKey = `tourn_grouped_${match.tournamentId}_${dateStr}`;
                                 } else {
+                                    console.log(`[Diagnostic] Match entry.eventId=${entry.eventId} not found in matches or lacks tournamentId. Match:`, match);
                                     description = 'Partita Amichevole';
                                     groupKey = `friendly_${entry.eventId}`;
                                 }

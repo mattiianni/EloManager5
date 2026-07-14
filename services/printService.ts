@@ -695,9 +695,12 @@ export const printRanking = (
                     if (isTeamTournament) {
                         return selectedTeamTournamentMatchdayIds?.includes(entry.eventId);
                     }
-                    
+                    const normSelected = selectedTournamentId.trim().toLowerCase();
                     const tournamentIds = tournaments
-                        .filter(t => (t.giornataName || t.name) === selectedTournamentId)
+                        .filter(t => 
+                            (t.giornataName && t.giornataName.trim().toLowerCase() === normSelected) || 
+                            (t.name && t.name.trim().toLowerCase() === normSelected)
+                        )
                         .map(t => t.id);
                     
                     if (entry.type === 'tournament') {
@@ -722,18 +725,22 @@ export const printRanking = (
             const getTournDesc = (tournament: any) => {
                 if (!tournament) return 'Giornata Torneo';
                 if (selectedTournamentId) {
-                    if (tournament.type === 'Torneo Libero' && tournament.giornataName) return tournament.giornataName;
-                    return tournament.type;
+                    return tournament.name;
+                } else {
+                    if (tournament.giornataName) {
+                        return `${tournament.name} (${tournament.giornataName})`;
+                    }
+                    return tournament.name;
                 }
-                if (tournament.type === 'Torneo Libero' && tournament.giornataName) return `${tournament.giornataName} (${tournament.name})`;
-                return `${tournament.type} (${tournament.name})`;
             };
 
             if (entry.type === 'manual') {
                 description = 'Aggiornamento Manuale';
                 groupKey = `manual_${entry.eventId}`;
             } else if (entry.type === 'team_tournament_matchday') {
-                description = `Giornata Torneo ${entry.sourceLabel || ''}`.trim();
+                description = entry.sourceLabel && entry.sourceLabel.trim().length > 0
+                    ? entry.sourceLabel.trim()
+                    : 'Giornata Torneo';
                 groupKey = `team_${entry.eventId}`;
             } else if (entry.type === 'tournament') {
                 const tournament = tournaments.find(t => t.id === entry.eventId);

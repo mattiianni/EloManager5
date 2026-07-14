@@ -4026,16 +4026,18 @@ app.get('/api/team-tournament-matchdays/by-tournament/:tournamentDayId', async (
 // Funzione per applicare l'ELO per una giornata team tournament
 async function applyTeamMatchdayElo(matchdayId, workspaceId) {
     const matchdayResult = await sql`
-        SELECT m.id, m.tournament_day_id, m.phase, t.name, t.date
+        SELECT m.id, m.tournament_day_id, m.phase, t.name AS day_name, t.date, r.name AS root_name
         FROM team_tournament_matchdays m
         JOIN tournaments t ON t.id = m.tournament_day_id
+        LEFT JOIN tournaments r ON r.id = m.root_tournament_id
         WHERE m.id = ${matchdayId} AND t.workspace_id = ${workspaceId}
         LIMIT 1
     `;
     if (matchdayResult.length === 0) return;
     const matchday = matchdayResult[0];
     const dateFormatted = new Date(matchday.date).toLocaleDateString('it-IT');
-    const sourceLabel = `Giornata ${matchday.name} (${dateFormatted})`;
+    const rootName = matchday.root_name || matchday.day_name;
+    const sourceLabel = `Giornata (${rootName}), ${dateFormatted}`;
 
     // Revert existing ELO changes for this matchday
     const oldHistory = await sql`
