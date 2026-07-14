@@ -726,7 +726,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  const team2Games = match.sets.reduce((sum, set) => sum + set.team2, 0);
  allMatches.push({
  ...match,
- winner: team1Games > team2Games ? 'team1' : 'team2',
+ winner: team1Games === team2Games ? 'draw' : (team1Games > team2Games ? 'team1' : 'team2'),
  date: tournamentDate
  });
  });
@@ -737,7 +737,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  const team2Games = match.sets.reduce((sum, set) => sum + set.team2, 0);
  allMatches.push({
  ...match,
- winner: team1Games > team2Games ? 'team1' : 'team2',
+ winner: team1Games === team2Games ? 'draw' : (team1Games > team2Games ? 'team1' : 'team2'),
  date: tournamentDate
  });
  });
@@ -748,7 +748,7 @@ const TournamentFlow: React.FC<TournamentFlowProps> = ({ pairs, onFinish, presel
  const team2Games = match.sets.reduce((sum, set) => sum + set.team2, 0);
  allMatches.push({
  ...match,
- winner: team1Games > team2Games ? 'team1' : 'team2',
+ winner: team1Games === team2Games ? 'draw' : (team1Games > team2Games ? 'team1' : 'team2'),
  date: tournamentDate
  });
  });

@@ -150,7 +150,7 @@ export const HIGButton: React.FC<HIGButtonProps> = ({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    minHeight: variant === 'plain' ? 'auto' : sizePreset.height,
+    minHeight: variant === 'plain' ? 44 : sizePreset.height,
     padding:
       variant === 'plain'
         ? '4px 8px'

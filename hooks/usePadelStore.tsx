@@ -68,7 +68,6 @@ interface PadelStore {
     getTeamTournamentFixtures: (rootTournamentId: string) => Promise<TeamTournamentFixture[]>;
     updateTournament: (tournamentId: string, updatedData: Pick<Tournament, 'club' | 'date' | 'name'>) => Promise<void>;
     updateTournamentSeriesName: (oldName: string, newName: string) => Promise<void>;
-    cascadeResetTournament: (tournamentId: string, phaseMatchIds: string[], skipRefresh?: boolean) => Promise<void>;
     deleteTournament: (tournamentId: string, deleteIsolatedPlayers?: boolean) => Promise<void>;
     deleteTournamentSeries: (giornataName: string, deleteIsolatedPlayers?: boolean) => Promise<void>;
     getPlayerById: (id: string) => Player | { id: string; name: string; surname: string; isDeleted: true } | undefined;

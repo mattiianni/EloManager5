@@ -880,7 +880,7 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                     <TournamentsSkeleton />
                 ) : sortedGroupIds.length > 0 ? (
                     <>
-                    <div className="px-1 pt-3 -mb-3">
+                    <div className="px-3 md:px-4 pt-3 mb-4">
                         <h2 className="text-[1.62rem] font-black leading-none tracking-tight text-sky-500 dark:text-sky-300 sm:text-[1.78rem] md:text-[2.25rem]">Tornei Attivi</h2>
                     </div>
                     {sortedGroupIds.map(groupId => {

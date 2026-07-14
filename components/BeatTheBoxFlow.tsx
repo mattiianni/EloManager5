@@ -44,8 +44,8 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
 }) => {
  const { addMultipleMatches, getPlayerById } = usePadelStore();
  
- const [step, setStep] = useState<BeatTheBoxStep>((pairs.length === 6 || pairs.length === 8) ? 'playoff_selection' : 'animating');
- const [playoffType, setPlayoffType] = useState<PlayoffType>(pairs.length >= 10 ? 'semifinals' : 'finals_only');
+ const [step, setStep] = useState<BeatTheBoxStep>((pairs.length >= 6) ? 'playoff_selection' : 'animating');
+ const [playoffType, setPlayoffType] = useState<PlayoffType>(pairs.length >= 6 ? 'semifinals' : 'finals_only');
  const [boxesData, setBoxesData] = useState<BoxData[]>([]);
  const [allMatches, setAllMatches] = useState<Match[]>([]);
  const [boxStandings, setBoxStandings] = useState<BoxStanding[]>([]);
@@ -313,15 +313,16 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  })
  );
  
- const tournamentData: Omit<Tournament, 'id'> = {
- name: tournamentName,
- type: TournamentType.BeatTheBox,
- date: tournamentDate,
- club: clubName,
- matchIds: [],
- status: 'scheduled',
- giornataName: giornataName || undefined,
- };
+    const tournamentData: Omit<Tournament, 'id'> = {
+        name: tournamentName,
+        type: TournamentType.BeatTheBox,
+        date: tournamentDate,
+        club: clubName,
+        matchIds: [],
+        status: 'scheduled',
+        giornataName: giornataName || undefined,
+        playoffType: playoffType,
+    };
  
  await addMultipleMatches(allBoxMatches, tournamentData);
  
@@ -530,7 +531,7 @@ const BeatTheBoxFlow: React.FC<BeatTheBoxFlowProps> = ({
  }}
  title="Calendario Salvato"
  >
- <div className="text-center">
+ <div className="text-center px-4 pb-4">
  <div className="mb-4">
  <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -450,13 +450,11 @@ const StatistichePage: React.FC = () => {
 
         // Longest win streak across the chronological submatches
         const streakByPlayer = new Map<string, { label: string; current: number; best: number }>();
-        const touchStreak = (p: { name: string; surname: string }) => {
+        const getStreak = (p: { name: string; surname: string }) => {
             const key = playerKey(p);
             const existing = streakByPlayer.get(key);
             if (existing) return existing;
-            const created = { label: displayName(p), current: 0, best: 0 };
-            streakByPlayer.set(key, created);
-            return created;
+            return { label: displayName(p), current: 0, best: 0 };
         };
         chronological.forEach(md => {
             (md.subMatches || [])
@@ -470,22 +468,26 @@ const StatistichePage: React.FC = () => {
                         : (t1Games === t2Games ? null : (t1Games > t2Games ? 'team1' : 'team2'));
 
                     (sm.team1Players || []).forEach(p => {
-                        const st = touchStreak(p);
+                        const st = getStreak(p);
+                        let nextSt = { ...st };
                         if (winner === 'team1') {
-                            st.current += 1;
-                            st.best = Math.max(st.best, st.current);
+                            nextSt.current += 1;
+                            nextSt.best = Math.max(nextSt.best, nextSt.current);
                         } else if (winner === 'team2') {
-                            st.current = 0;
+                            nextSt.current = 0;
                         }
+                        streakByPlayer.set(playerKey(p), nextSt);
                     });
                     (sm.team2Players || []).forEach(p => {
-                        const st = touchStreak(p);
+                        const st = getStreak(p);
+                        let nextSt = { ...st };
                         if (winner === 'team2') {
-                            st.current += 1;
-                            st.best = Math.max(st.best, st.current);
+                            nextSt.current += 1;
+                            nextSt.best = Math.max(nextSt.best, nextSt.current);
                         } else if (winner === 'team1') {
-                            st.current = 0;
+                            nextSt.current = 0;
                         }
+                        streakByPlayer.set(playerKey(p), nextSt);
                     });
                 });
         });
@@ -519,6 +521,167 @@ const StatistichePage: React.FC = () => {
             })
             .slice(0, 3);
 
+        // ====== ADVANCED STATS FOR TEAM TOURNAMENT ======
+        
+        // UPSET - matches where lower ELO team won
+        const upsets: string[] = [];
+        const tournamentEloHistory = eloHistory.filter(h => matchdayIds.has(h.eventId));
+        
+        chronological.forEach(md => {
+            (md.subMatches || []).filter(sm => !sm.cancelled).forEach(sm => {
+                if (isBlankSets(sm.sets as any)) return;
+                const t1Games = (sm.sets || []).reduce((sum: number, s: any) => sum + Number(s.team1 || 0), 0);
+                const t2Games = (sm.sets || []).reduce((sum: number, s: any) => sum + Number(s.team2 || 0), 0);
+                const winner = sm.winner && sm.winner !== 'draw' ? sm.winner : (t1Games === t2Games ? null : (t1Games > t2Games ? 'team1' : 'team2'));
+                
+                const t1Players = sm.team1Players || [];
+                const t2Players = sm.team2Players || [];
+                
+                if (winner && t1Players.length === 2 && t2Players.length === 2) {
+                    const matchHistory = tournamentEloHistory.filter(h => h.eventId === md.id);
+                    let team1EloAvg = 0; let team2EloAvg = 0;
+                    if (matchHistory.length > 0) {
+                        const t1Sum = t1Players.reduce((sum, p) => sum + (matchHistory.find(h => h.playerId === p.id)?.eloBefore || 1500), 0);
+                        const t2Sum = t2Players.reduce((sum, p) => sum + (matchHistory.find(h => h.playerId === p.id)?.eloBefore || 1500), 0);
+                        team1EloAvg = t1Sum / 2; team2EloAvg = t2Sum / 2;
+                    }
+                    if ((winner === 'team1' && team1EloAvg < team2EloAvg - 20) || (winner === 'team2' && team2EloAvg < team1EloAvg - 20)) {
+                        const winningTeam = winner === 'team1' ? t1Players : t2Players;
+                        const losingTeam = winner === 'team1' ? t2Players : t1Players;
+                        const diffElo = Math.abs(team1EloAvg - team2EloAvg).toFixed(2);
+                        upsets.push(`${winningTeam[0].name} & ${winningTeam[1].name} vs ${losingTeam[0].name} & ${losingTeam[1].name} (Δ${diffElo})`);
+                    }
+                }
+            });
+        });
+
+        // ELO Gain/Loss
+        const eloPerGiornata = new Map<string, Map<string, number>>();
+        tournamentEloHistory.forEach(h => {
+            if (!eloPerGiornata.has(h.playerId)) eloPerGiornata.set(h.playerId, new Map());
+            const currentDelta = eloPerGiornata.get(h.playerId)!.get(h.date) || 0;
+            eloPerGiornata.get(h.playerId)!.set(h.date, currentDelta + h.delta);
+        });
+
+        let maggiorGuadagnoElo: { player: any; guadagno: number; data: string }[] = [];
+        let peggiorPerditaElo: { player: any; perdita: number; data: string }[] = [];
+        
+        eloPerGiornata.forEach((giornateMap, playerId) => {
+            const player = players.find(p => p.id === playerId);
+            if (player) {
+                giornateMap.forEach((delta, data) => {
+                    if (delta > 0) maggiorGuadagnoElo.push({ player: clonePlayer(player), guadagno: delta, data: new Date(data).toLocaleDateString('it-IT') });
+                    else if (delta < 0) peggiorPerditaElo.push({ player: clonePlayer(player), perdita: Math.abs(delta), data: new Date(data).toLocaleDateString('it-IT') });
+                });
+            }
+        });
+        
+        maggiorGuadagnoElo = maggiorGuadagnoElo.sort((a, b) => b.guadagno - a.guadagno).slice(0, 3);
+        peggiorPerditaElo = peggiorPerditaElo.sort((a, b) => b.perdita - a.perdita).slice(0, 3);
+
+        // FORM (W/L/W/W)
+        const form = rows.map(s => {
+            const playerMatches: { won: boolean }[] = [];
+            chronological.forEach(md => {
+                (md.subMatches || []).filter(sm => !sm.cancelled).forEach(sm => {
+                    const isT1 = (sm.team1Players || []).some(p => p.id === s.id);
+                    const isT2 = (sm.team2Players || []).some(p => p.id === s.id);
+                    if (!isT1 && !isT2) return;
+                    if (isBlankSets(sm.sets as any)) return;
+                    
+                    const t1Games = (sm.sets || []).reduce((sum: number, set: any) => sum + Number(set.team1 || 0), 0);
+                    const t2Games = (sm.sets || []).reduce((sum: number, set: any) => sum + Number(set.team2 || 0), 0);
+                    const winner = sm.winner && sm.winner !== 'draw' ? sm.winner : (t1Games === t2Games ? null : (t1Games > t2Games ? 'team1' : 'team2'));
+                    
+                    if (winner) {
+                        playerMatches.push({ won: (isT1 && winner === 'team1') || (isT2 && winner === 'team2') });
+                    }
+                });
+            });
+            const last5 = playerMatches.slice(-5);
+            return {
+                player: s,
+                form: last5.map(m => m.won ? '🟢' : '🔴').join(' ') || 'N/A',
+                lastMatches: last5.length
+            };
+        }).filter(f => f.lastMatches >= 3)
+          .sort((a, b) => (b.form.match(/🟢/g) || []).length - (a.form.match(/🟢/g) || []).length)
+          .slice(0, 5);
+
+        // CLUTCH PERFORMANCE (wins by 1 game difference)
+        const clutchPerformance = rows.map(s => {
+            const playerMatches: { won: boolean, diff: number }[] = [];
+            chronological.forEach(md => {
+                (md.subMatches || []).filter(sm => !sm.cancelled).forEach(sm => {
+                    const isT1 = (sm.team1Players || []).some(p => p.id === s.id);
+                    const isT2 = (sm.team2Players || []).some(p => p.id === s.id);
+                    if (!isT1 && !isT2) return;
+                    if (isBlankSets(sm.sets as any)) return;
+                    
+                    const t1Games = (sm.sets || []).reduce((sum: number, set: any) => sum + Number(set.team1 || 0), 0);
+                    const t2Games = (sm.sets || []).reduce((sum: number, set: any) => sum + Number(set.team2 || 0), 0);
+                    const winner = sm.winner && sm.winner !== 'draw' ? sm.winner : (t1Games === t2Games ? null : (t1Games > t2Games ? 'team1' : 'team2'));
+                    const diff = Math.abs(t1Games - t2Games);
+                    
+                    if (winner && diff === 1) { // Clutch is 1 game difference
+                        playerMatches.push({ won: (isT1 && winner === 'team1') || (isT2 && winner === 'team2'), diff });
+                    }
+                });
+            });
+            const clutchWins = playerMatches.filter(m => m.won).length;
+            return { player: s, clutchWinRate: playerMatches.length ? (clutchWins / playerMatches.length) * 100 : 0, clutchMatches: playerMatches.length };
+        }).filter(c => c.clutchMatches >= 1).sort((a, b) => b.clutchWinRate - a.clutchWinRate).slice(0, 3);
+
+        // DIFESA FERREA (Average positive diff)
+        const difesaFerrea = rows.map(s => {
+            let totalDiff = 0;
+            let wins = 0;
+            chronological.forEach(md => {
+                (md.subMatches || []).filter(sm => !sm.cancelled).forEach(sm => {
+                    const isT1 = (sm.team1Players || []).some(p => p.id === s.id);
+                    const isT2 = (sm.team2Players || []).some(p => p.id === s.id);
+                    if (!isT1 && !isT2) return;
+                    if (isBlankSets(sm.sets as any)) return;
+                    const t1Games = (sm.sets || []).reduce((sum: number, set: any) => sum + Number(set.team1 || 0), 0);
+                    const t2Games = (sm.sets || []).reduce((sum: number, set: any) => sum + Number(set.team2 || 0), 0);
+                    const winner = sm.winner && sm.winner !== 'draw' ? sm.winner : (t1Games === t2Games ? null : (t1Games > t2Games ? 'team1' : 'team2'));
+                    if ((isT1 && winner === 'team1') || (isT2 && winner === 'team2')) {
+                        wins++;
+                        totalDiff += Math.abs(t1Games - t2Games);
+                    }
+                });
+            });
+            return { player: s, avgGameDifference: wins > 0 ? totalDiff / wins : 0, wins };
+        }).filter(d => d.wins >= 2).sort((a, b) => b.avgGameDifference - a.avgGameDifference).slice(0, 3);
+        
+        // MVP (Most matchdays with positive game diff for the player)
+        let mvp = rows.map(s => {
+            let wonMatchdays = 0;
+            chronological.forEach(md => {
+                let mdDiff = 0;
+                (md.subMatches || []).filter(sm => !sm.cancelled).forEach(sm => {
+                    const isT1 = (sm.team1Players || []).some(p => p.id === s.id);
+                    const isT2 = (sm.team2Players || []).some(p => p.id === s.id);
+                    if (isT1) {
+                        const t1Games = (sm.sets || []).reduce((sum: number, set: any) => sum + Number(set.team1 || 0), 0);
+                        const t2Games = (sm.sets || []).reduce((sum: number, set: any) => sum + Number(set.team2 || 0), 0);
+                        mdDiff += (t1Games - t2Games);
+                    } else if (isT2) {
+                        const t1Games = (sm.sets || []).reduce((sum: number, set: any) => sum + Number(set.team1 || 0), 0);
+                        const t2Games = (sm.sets || []).reduce((sum: number, set: any) => sum + Number(set.team2 || 0), 0);
+                        mdDiff += (t2Games - t1Games);
+                    }
+                });
+                if (mdDiff > 0) wonMatchdays++;
+            });
+            return { player: s, vittorieGiornate: wonMatchdays };
+        }).filter(m => m.vittorieGiornate > 0).sort((a, b) => b.vittorieGiornate - a.vittorieGiornate).slice(0, 3);
+
+        const defaultPlayer = rows[0] || { name: 'N/A', surname: '' };
+        if (maggiorGuadagnoElo.length === 0) maggiorGuadagnoElo = [{ player: defaultPlayer, guadagno: 0, data: '-' }];
+        if (peggiorPerditaElo.length === 0) peggiorPerditaElo = [{ player: defaultPlayer, perdita: 0, data: '-' }];
+        if (mvp.length === 0) mvp = [{ player: defaultPlayer, vittorieGiornate: 0 }];
+
         return {
             playedTotal,
             playedRoundRobin,
@@ -534,6 +697,14 @@ const StatistichePage: React.FC = () => {
             mostGamesLost,
             bestPairsByWinRate,
             playerRows: rows,
+            // Advanced stats
+            upset: [{ count: upsets.length, details: upsets.slice(0, 3) }],
+            maggiorGuadagnoElo,
+            peggiorPerditaElo,
+            form,
+            clutchPerformance,
+            difesaFerrea,
+            mvp,
         };
     }, [selectedTeamTournamentRootId, teamTournamentConfigByRoot, teamTournamentMatchdaysByRoot, teamTournamentTeamsByRoot, players, eloHistory]);
 
@@ -1425,77 +1596,143 @@ const StatistichePage: React.FC = () => {
                                 )}
                             </div>
 
-                            {/* 3) Altre info (personali) */}
+                            {/* 3) Statistiche Avanzate e Personali */}
                             <div className="space-y-6">
-                                <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                                    <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-bold">
-                                        Più games vinti
-                                    </div>
-                                    {loading ? (
-                                        <div className="p-4 text-sm text-gray-500 dark:text-gray-400">Caricamento...</div>
-                                    ) : !derived || derived.mostGamesWon.length === 0 ? (
-                                        <div className="p-4 text-sm text-gray-500 dark:text-gray-400">Nessun dato disponibile.</div>
-                                    ) : (
-                                        <div className="p-4 space-y-1 text-sm text-gray-800 dark:text-gray-200">
-                                            {derived.mostGamesWon.map((r, i) => (
-                                                <div key={`${r.name}-${r.surname}-${i}`}>{i + 1}. {r.name} {r.surname} ({r.gamesWon})</div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
+                                <h4 className="text-md font-bold text-gray-900 dark:text-white mb-3 mt-8">
+                                    Statistiche Avanzate
+                                </h4>
+                                
+                                <StatCard 
+                                    title="Più Games Vinti" 
+                                    icon={<SFIcon name="target" size={14} />}
+                                    entries={!loading && derived && derived.mostGamesWon.length > 0
+                                        ? derived.mostGamesWon.map(r => `${r.name} ${r.surname} (${r.gamesWon} games)`)
+                                        : ['(in attesa di dati ulteriori)']
+                                    }
+                                />
+                                
+                                <StatCard 
+                                    title="Più Games Persi" 
+                                    icon={<SFIcon name="chart.bar" size={14} />}
+                                    entries={!loading && derived && derived.mostGamesLost.length > 0
+                                        ? derived.mostGamesLost.map(r => `${r.name} ${r.surname} (${r.gamesLost} games)`)
+                                        : ['(in attesa di dati ulteriori)']
+                                    }
+                                />
+                                
+                                <StatCard 
+                                    title="Coppia Più Frequente" 
+                                    icon={<SFIcon name="person.2.fill" size={14} />}
+                                    entries={!loading && derived && derived.pairsTop.length > 0
+                                        ? derived.pairsTop.map(p => `${p.label} (${p.played} partite)`)
+                                        : ['(in attesa di dati ulteriori)']
+                                    }
+                                />
+                                
+                                <StatCard 
+                                    title="Miglior Coppia (Win Rate)" 
+                                    icon={<SFIcon name="star.fill" size={14} color="var(--ios-systemYellow)" />}
+                                    entries={!loading && derived && derived.bestPairsByWinRate.length > 0
+                                        ? derived.bestPairsByWinRate.map(p => `${p.label} (${p.winRate.toFixed(0)}% in ${p.played} match)`)
+                                        : ['(in attesa di dati ulteriori)']
+                                    }
+                                />
+                                
+                                <StatCard 
+                                    title="Serie Vittorie Consecutive" 
+                                    icon={<SFIcon name="flame.fill" size={14} color="var(--ios-systemOrange)" />}
+                                    entries={!loading && derived && derived.streakTop.length > 0
+                                        ? derived.streakTop.map(s => `${s.label} (${s.best} vittorie)`)
+                                        : ['(in attesa di dati ulteriori)']
+                                    }
+                                />
 
-                                <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                                    <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-bold">
-                                        Più games persi
+                                {/* UPSET */}
+                                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                    <h5 className="font-semibold text-gray-900 dark:text-white mb-2 text-sm">UPSET</h5>
+                                    <p className="text-xs italic text-gray-500 dark:text-gray-400 mb-3">
+                                        (Vittorie contro avversari superiori... sulla carta!)
+                                    </p>
+                                    <div className="space-y-1">
+                                        {!loading && derived && derived.upset[0].count > 0 ? (
+                                            <>
+                                                <div className="text-sm text-gray-700 dark:text-gray-300 font-semibold">
+                                                    {derived.upset[0].count} upset{derived.upset[0].count > 1 ? 's' : ''} registrat{derived.upset[0].count > 1 ? 'i' : 'o'}
+                                                </div>
+                                                {derived.upset[0].details.map((detail: string, idx: number) => (
+                                                    <div key={idx} className="text-xs text-gray-600 dark:text-gray-400">
+                                                        {idx + 1}. {detail}
+                                                    </div>
+                                                ))}
+                                            </>
+                                        ) : (
+                                            <div className="text-sm text-gray-700 dark:text-gray-300">
+                                                Nessun upset registrato
+                                            </div>
+                                        )}
                                     </div>
-                                    {loading ? (
-                                        <div className="p-4 text-sm text-gray-500 dark:text-gray-400">Caricamento...</div>
-                                    ) : !derived || derived.mostGamesLost.length === 0 ? (
-                                        <div className="p-4 text-sm text-gray-500 dark:text-gray-400">Nessun dato disponibile.</div>
-                                    ) : (
-                                        <div className="p-4 space-y-1 text-sm text-gray-800 dark:text-gray-200">
-                                            {derived.mostGamesLost.map((r, i) => (
-                                                <div key={`${r.name}-${r.surname}-${i}`}>{i + 1}. {r.name} {r.surname} ({r.gamesLost})</div>
-                                            ))}
-                                        </div>
-                                    )}
                                 </div>
+                                
+                                <StatCard 
+                                    title="Maggior Guadagno ELO" 
+                                    icon={<SFIcon name="arrow.up.right.circle" size={14} color="var(--ios-systemGreen)" />}
+                                    entries={!loading && derived && derived.maggiorGuadagnoElo.length > 0 && derived.maggiorGuadagnoElo[0].guadagno > 0
+                                        ? derived.maggiorGuadagnoElo.map(e => `${e.player.name} ${e.player.surname} (+${e.guadagno.toFixed(1)} il ${e.data})`)
+                                        : ['(in attesa di dati ulteriori)']
+                                    }
+                                />
+                                
+                                <StatCard 
+                                    title="Peggior Perdita ELO" 
+                                    icon={<SFIcon name="arrow.down.right.circle" size={14} color="var(--ios-systemRed)" />}
+                                    entries={!loading && derived && derived.peggiorPerditaElo.length > 0 && derived.peggiorPerditaElo[0].perdita > 0
+                                        ? derived.peggiorPerditaElo.map(e => `${e.player.name} ${e.player.surname} (-${e.perdita.toFixed(1)} il ${e.data})`)
+                                        : ['(in attesa di dati ulteriori)']
+                                    }
+                                />
                             </div>
 
+                            {/* 4. Statistiche di Performance */}
                             <div className="space-y-6">
-                                <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                                    <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-bold">
-                                        Miglior coppia (Win Rate)
-                                    </div>
-                                    {loading ? (
-                                        <div className="p-4 text-sm text-gray-500 dark:text-gray-400">Caricamento...</div>
-                                    ) : !derived || derived.bestPairsByWinRate.length === 0 ? (
-                                        <div className="p-4 text-sm text-gray-500 dark:text-gray-400">Nessun dato disponibile.</div>
-                                    ) : (
-                                        <div className="p-4 space-y-1 text-sm text-gray-800 dark:text-gray-200">
-                                            {derived.bestPairsByWinRate.map((p, i) => (
-                                                <div key={`${p.label}-${i}`}>{i + 1}. {p.label} ({p.winRate.toFixed(0)}% in {p.played})</div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
+                                <h4 className="text-md font-bold text-gray-900 dark:text-white mb-3 mt-8">
+                                    Statistiche di Performance
+                                </h4>
+                                
+                                <StatCard 
+                                    title="Forma (Ultime 5 partite)" 
+                                    icon={<SFIcon name="waveform.path.ecg" size={14} color="var(--ios-systemIndigo)" />}
+                                    entries={!loading && derived && derived.form && derived.form.length > 0
+                                        ? derived.form.map(f => `${f.player.name} ${f.player.surname}: ${f.form}`)
+                                        : ['(in attesa di dati ulteriori)']
+                                    }
+                                />
+                                
+                                <StatCard 
+                                    title="Clutch Performance" 
+                                    icon={<SFIcon name="bolt.fill" size={14} color="var(--ios-systemYellow)" />}
+                                    entries={!loading && derived && derived.clutchPerformance && derived.clutchPerformance.length > 0
+                                        ? derived.clutchPerformance.map(c => `${c.player.name} ${c.player.surname} (${c.clutchWinRate.toFixed(0)}% - ${c.clutchMatches} match tirati)`)
+                                        : ['(in attesa di dati ulteriori)']
+                                    }
+                                />
+                                
+                                <StatCard 
+                                    title="Difesa Ferrea" 
+                                    icon={<SFIcon name="shield.fill" size={14} color="var(--ios-systemBlue)" />}
+                                    entries={!loading && derived && derived.difesaFerrea && derived.difesaFerrea.length > 0
+                                        ? derived.difesaFerrea.map(d => `${d.player.name} ${d.player.surname} (+${d.avgGameDifference.toFixed(1)} games per vittoria)`)
+                                        : ['(in attesa di dati ulteriori)']
+                                    }
+                                />
 
-                                <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                                    <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-bold">
-                                        Streak (vittorie consecutive)
-                                    </div>
-                                    {loading ? (
-                                        <div className="p-4 text-sm text-gray-500 dark:text-gray-400">Caricamento...</div>
-                                    ) : !derived || derived.streakTop.length === 0 ? (
-                                        <div className="p-4 text-sm text-gray-500 dark:text-gray-400">Nessun dato disponibile.</div>
-                                    ) : (
-                                        <div className="p-4 space-y-1 text-sm text-gray-800 dark:text-gray-200">
-                                            {derived.streakTop.map((s, i) => (
-                                                <div key={`${s.label}-${i}`}>{i + 1}. {s.label} ({s.best})</div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
+                                <StatCard 
+                                    title="MVP (Giornate Vinte)" 
+                                    icon={<SFIcon name="crown.fill" size={14} color="var(--ios-systemYellow)" />}
+                                    entries={!loading && derived && derived.mvp && derived.mvp.length > 0 && derived.mvp[0].vittorieGiornate > 0
+                                        ? derived.mvp.map(m => `${m.player.name} ${m.player.surname} (${m.vittorieGiornate} giornate)`)
+                                        : ['(in attesa di dati ulteriori)']
+                                    }
+                                />
                             </div>
 
                             <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">

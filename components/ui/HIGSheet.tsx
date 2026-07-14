@@ -166,8 +166,8 @@ export const HIGSheet: React.FC<HIGSheetProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '11px 16px',
-              minHeight: '44px',
+              padding: '0 16px',
+              height: '44px',
               borderBottom: '0.5px solid var(--ios-separator)',
               flexShrink: 0,
             }}
@@ -183,6 +183,9 @@ export const HIGSheet: React.FC<HIGSheetProps> = ({
                     border: 'none',
                     padding: 0,
                     cursor: 'pointer',
+                    height: '44px',
+                    display: 'flex',
+                    alignItems: 'center',
                   }}
                 >
                   {leadingAction.label}
@@ -200,7 +203,7 @@ export const HIGSheet: React.FC<HIGSheetProps> = ({
               {title}
             </div>
             
-            <div style={{ flex: 1, textAlign: 'right' }}>
+            <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
               {trailingAction && (
                 <button
                   onClick={trailingAction.onPress}
@@ -213,6 +216,9 @@ export const HIGSheet: React.FC<HIGSheetProps> = ({
                     border: 'none',
                     padding: 0,
                     cursor: trailingAction.disabled ? 'default' : 'pointer',
+                    height: '44px',
+                    display: 'flex',
+                    alignItems: 'center',
                   }}
                 >
                   {trailingAction.label}
@@ -224,7 +230,7 @@ export const HIGSheet: React.FC<HIGSheetProps> = ({
           {/* Content Area */}
           <div
             style={{
-              padding: '0 0 calc(env(safe-area-inset-bottom, 0px) + 32px)',
+              padding: '0 0 env(safe-area-inset-bottom, 0px)',
               overflowY: 'auto',
               flex: 1,
             }}

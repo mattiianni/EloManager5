@@ -102,10 +102,10 @@ export default function PlayerPrintModal({
                 />
 
                 <div className="flex justify-between items-center text-sm px-1">
-                    <button onClick={handleSelectAll} className="text-sky-600 dark:text-sky-400 font-medium hover:underline">
+                    <button onClick={handleSelectAll} className="text-sky-600 dark:text-sky-400 font-medium hover:underline min-h-[44px]">
                         Seleziona Tutti
                     </button>
-                    <button onClick={handleDeselectAll} className="text-gray-500 dark:text-gray-400 hover:underline">
+                    <button onClick={handleDeselectAll} className="text-gray-500 dark:text-gray-400 hover:underline min-h-[44px]">
                         Deseleziona Tutti
                     </button>
                 </div>
@@ -115,7 +115,7 @@ export default function PlayerPrintModal({
                         <p className="text-center text-gray-500 dark:text-gray-400 py-4">Nessun giocatore trovato.</p>
                     ) : (
                         filteredPlayers.map(p => (
-                            <label key={p.id} className="flex items-center space-x-3 cursor-pointer p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 border border-transparent dark:border-gray-800">
+                            <label key={p.id} className="flex items-center space-x-3 cursor-pointer p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 border border-transparent dark:border-gray-800 min-h-[44px]">
                                 <input 
                                     type="checkbox" 
                                     checked={selectedIds.has(p.id)} 

@@ -1,4 +1,9 @@
-## v5.0.4
+## v5.0.5
+- Statistiche: Risolto bug fatale ("Attempted to assign to readonly property") nel calcolo delle serie di vittorie consecutive.
+- Statistiche: Aggiunte le statistiche avanzate (Upsets, Maggior Guadagno/Perdita Elo, Forma, Clutch Performance, Difesa Ferrea, MVP) anche per i Tornei a Squadre.
+- UI: Completato il refactoring visivo della pagina Statistiche nei tornei a squadre, impiegando i nuovi componenti standardizzati `StatCard`.
+
+
 - Beat the Box: Implementata l'opzione "Solo Finali" o "Semifinali + Finali" per i tornei a 6 e 8 coppie.
 - Beat the Box: Aggiunta logica di accoppiamento meritocratico per le semifinali, evitando l'incrocio tra squadre dello stesso girone.
 - Beat the Box: Risolto un bug nella partita di consolazione per 3 box, garantendo matematicamente che i giocatori dello stesso girone non giochino mai insieme.

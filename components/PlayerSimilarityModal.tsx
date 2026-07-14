@@ -53,7 +53,7 @@ const PlayerSimilarityModal: React.FC<PlayerSimilarityModalProps> = ({
                     </div>
                 </div>
 
-                <div className="p-4 bg-ios-fill dark:bg-gray-800 space-y-2">
+                <div className="p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] bg-ios-fill dark:bg-gray-800 space-y-2">
                     <button
                         onClick={onCreateNew}
                         className="w-full py-3 bg-ios-blue text-white font-semibold rounded-xl active:bg-blue-600 transition-colors"

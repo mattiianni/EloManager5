@@ -58,6 +58,7 @@ export interface Tournament {
     teamTournamentTotalDays?: number | null; // For Torneo a Squadre: total schedule days (Round Robin)
     teamTournamentTeam1Number?: number | null; // For Torneo a Squadre giornate: team1 number for the fixture
     teamTournamentTeam2Number?: number | null; // For Torneo a Squadre giornate: team2 number for the fixture
+    playoffType?: string;
     teamTournamentPhase?: 'round_robin' | TeamTournamentPlayoffPhase | null;
     isBye?: boolean; // Se la partita del tabellone a eliminazione diretta è un BYE
 }

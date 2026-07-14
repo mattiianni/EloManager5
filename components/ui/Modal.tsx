@@ -47,7 +47,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
             <div ref={modalRef} className="fade-in flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-slate-200 dark:border-white/10 bg-white dark:bg-[rgba(15,23,42,0.94)] shadow-[0_28px_80px_rgba(15,23,42,0.08)] dark:shadow-[0_28px_80px_rgba(0,0,0,0.48)] backdrop-blur-[30px]">
                 <header className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 p-4 md:p-5">
                     <h2 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">{title}</h2>
-                    <button onClick={onClose} className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" aria-label="Close modal">
+                    <button onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" aria-label="Close modal">
                         <MaterialIcon name="close" className="text-[20px]" />
                     </button>
                 </header>

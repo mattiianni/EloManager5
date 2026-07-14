@@ -64,11 +64,16 @@ const getPrintStyles = (fontImport: boolean = false) => `
         .round-card,
         .day-block,
         .match-block,
+        .match-block,
         .fixture-block,
         .summary-block,
-        .section-block {
+        .section-block,
+        .grid-item {
             break-inside: avoid;
             page-break-inside: avoid;
+        }
+        .whitespace-nowrap {
+            white-space: nowrap;
         }
         h2,
         h3,
@@ -86,6 +91,12 @@ const getPrintStyles = (fontImport: boolean = false) => `
         tr, thead, tfoot {
             break-inside: avoid;
             page-break-inside: avoid;
+        }
+        td, th {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 150px;
         }
         @media screen {
             .print-page {
@@ -192,7 +203,7 @@ const printViaIframe = (htmlContent: string): boolean => {
             `<script>
                 window.addEventListener('load', function() {
                     setTimeout(function() {
-                        try { window.print(); } catch(e) { console.error('Print error:', e); }
+                        try { window.print(); } catch(e) { console.error('Print error:', e); alert('Impossibile aprire la finestra di stampa. Riprova e verifica i popup.'); }
                     }, 400);
                 });
             <\/script></body>`
@@ -442,8 +453,7 @@ export const printChart = (chartContainerId: string): boolean => {
         const printWindow = window.open('', '_blank');
 
         if (!printWindow) {
-            console.error('Failed to open print window. Popup might be blocked.');
-            alert('Impossibile aprire la finestra di stampa. Verifica che i popup non siano bloccati.');
+            alert('Per favore, abilita i popup del browser per stampare il PDF.');
             return false;
         }
 

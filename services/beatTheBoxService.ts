@@ -172,10 +172,18 @@ export function createFinalsFor2Boxes(boxStandings: BoxStanding[], date: string)
 // 3 BOX (6 COPPIE)
 // ==========================================
 export function createFinalsOnlyFor3Boxes(boxStandings: BoxStanding[], date: string): Omit<Match, 'id' | 'tournamentId'>[] {
-    const firsts = boxStandings.map(box => box.standings[0]);
-    const seconds = boxStandings.map(box => box.standings[1]).sort((a, b) => (b.points !== a.points ? b.points - a.points : b.gameDifference - a.gameDifference));
-    const thirds = boxStandings.map(box => box.standings[2]).sort((a, b) => (b.points !== a.points ? b.points - a.points : b.gameDifference - a.gameDifference));
-    const fourths = boxStandings.map(box => box.standings[3]);
+    const getSafeId = (boxIdx: number, rankIdx: number) => {
+        const p = boxStandings[boxIdx]?.standings[rankIdx]?.player;
+        return p ? p.id : `dummy-${boxIdx}-${rankIdx}`;
+    };
+
+    const firsts = [0, 1, 2].map(i => ({ player: { id: getSafeId(i, 0) }, points: boxStandings[i]?.standings[0]?.points || 0, diff: boxStandings[i]?.standings[0]?.gameDifference || 0 }));
+    const seconds = [0, 1, 2].map(i => ({ player: { id: getSafeId(i, 1) }, points: boxStandings[i]?.standings[1]?.points || 0, diff: boxStandings[i]?.standings[1]?.gameDifference || 0 }));
+    const thirds = [0, 1, 2].map(i => ({ player: { id: getSafeId(i, 2) }, points: boxStandings[i]?.standings[2]?.points || 0, diff: boxStandings[i]?.standings[2]?.gameDifference || 0 }));
+    const fourths = [0, 1, 2].map(i => ({ player: { id: getSafeId(i, 3) } }));
+
+    seconds.sort((a, b) => (b.points !== a.points ? b.points - a.points : b.diff - a.diff));
+    thirds.sort((a, b) => (b.points !== a.points ? b.points - a.points : b.diff - a.diff));
     
     const shuffledFirsts = [...firsts].sort(() => Math.random() - 0.5);
     
@@ -207,22 +215,26 @@ export function createSemifinalsAndFinalsFor3Boxes(
     semifinalResults?: { sf1Winner: 'team1' | 'team2', sf2Winner: 'team1' | 'team2' }
 ): { semifinals: Omit<Match, 'id' | 'tournamentId'>[]; finals: Omit<Match, 'id' | 'tournamentId'>[] } {
     
-    const b1 = boxStandings[0].standings;
-    const b2 = boxStandings[1].standings;
-    const b3 = boxStandings[2].standings;
+    const getSafeId = (boxIdx: number, rankIdx: number) => {
+        const p = boxStandings[boxIdx]?.standings[rankIdx]?.player;
+        return p ? p.id : `dummy-${boxIdx}-${rankIdx}`;
+    };
 
     // Semifinali
     const semifinals: Omit<Match, 'id' | 'tournamentId'>[] = [
         {
             date,
-            team1: [b1[0].player.id, b2[1].player.id],
-            team2: [b2[0].player.id, b3[1].player.id],
+            team1: [getSafeId(0, 0), getSafeId(1, 1)],
+            team2: [getSafeId(1, 0), getSafeId(2, 1)],
             sets: [], winner: null,
         },
         {
             date,
-            team1: [b3[0].player.id, b1[1].player.id],
-            team2: [boxStandings.map(b => b.standings[2]).sort((a, b) => b.points - a.points || b.gameDifference - a.gameDifference)[0].player.id, boxStandings.map(b => b.standings[2]).sort((a, b) => b.points - a.points || b.gameDifference - a.gameDifference)[1].player.id],
+            team1: [getSafeId(2, 0), getSafeId(0, 1)],
+            team2: [
+                [0, 1, 2].map(i => ({ id: getSafeId(i, 2), points: boxStandings[i]?.standings[2]?.points || 0, diff: boxStandings[i]?.standings[2]?.gameDifference || 0 })).sort((a, b) => b.points - a.points || b.diff - a.diff)[0].id,
+                [0, 1, 2].map(i => ({ id: getSafeId(i, 2), points: boxStandings[i]?.standings[2]?.points || 0, diff: boxStandings[i]?.standings[2]?.gameDifference || 0 })).sort((a, b) => b.points - a.points || b.diff - a.diff)[1].id
+            ],
             sets: [], winner: null,
         }
     ];
@@ -230,22 +242,22 @@ export function createSemifinalsAndFinalsFor3Boxes(
     const finals: Omit<Match, 'id' | 'tournamentId'>[] = [];
     
     // Consolazione (incrociata per evitare compagni dello stesso box)
-    const thirdsList = boxStandings.map((b, i) => ({ player: b.standings[2].player, boxIdx: i, points: b.standings[2].points, diff: b.standings[2].gameDifference }));
+    const thirdsList = [0, 1, 2].map(i => ({ id: getSafeId(i, 2), boxIdx: i, points: boxStandings[i]?.standings[2]?.points || 0, diff: boxStandings[i]?.standings[2]?.gameDifference || 0 }));
     thirdsList.sort((a, b) => b.points - a.points || b.diff - a.diff);
     const worstThird = thirdsList[2];
     
-    const fourths = boxStandings.map((b, i) => ({ player: b.standings[3].player, boxIdx: i }));
+    const fourths = [0, 1, 2].map(i => ({ id: getSafeId(i, 3), boxIdx: i }));
     const worstThirdBoxIdx = worstThird.boxIdx;
     
-    const fourthSameBox = fourths.find(f => f.boxIdx === worstThirdBoxIdx)!;
+    const fourthSameBox = fourths.find(f => f.boxIdx === worstThirdBoxIdx) || fourths[0];
     const fourthsOtherBoxes = fourths.filter(f => f.boxIdx !== worstThirdBoxIdx);
     
     const randomIndex = Math.random() < 0.5 ? 0 : 1;
-    const partnerForWorstThird = fourthsOtherBoxes[randomIndex];
-    const remainingFourth = fourthsOtherBoxes[1 - randomIndex];
+    const partnerForWorstThird = fourthsOtherBoxes[randomIndex] || fourthsOtherBoxes[0];
+    const remainingFourth = fourthsOtherBoxes[1 - randomIndex] || fourthsOtherBoxes[0];
     
-    const consolationTeam1 = [worstThird.player.id, partnerForWorstThird.player.id];
-    const consolationTeam2 = [fourthSameBox.player.id, remainingFourth.player.id];
+    const consolationTeam1 = [worstThird.id, partnerForWorstThird.id];
+    const consolationTeam2 = [fourthSameBox.id, remainingFourth.id];
 
     if (!semifinalResults) {
         finals.push({
@@ -289,8 +301,15 @@ export function createSemifinalsAndFinalsFor3Boxes(
 // 4+ BOX (8+ COPPIE)
 // ==========================================
 export function createFinalsOnlyFor4Boxes(boxStandings: BoxStanding[], date: string): Omit<Match, 'id' | 'tournamentId'>[] {
-    const firsts = boxStandings.map(b => b.standings[0].player.id);
-    const seconds = boxStandings.map(b => b.standings[1].player.id);
+    const getSafePlayerId = (boxIdx: number, rankIdx: number) => {
+        const p = boxStandings[boxIdx]?.standings[rankIdx]?.player;
+        return p ? p.id : `dummy-${boxIdx}-${rankIdx}`;
+    };
+
+    const firsts = [0, 1, 2, 3].map(i => getSafePlayerId(i, 0));
+    const seconds = [0, 1, 2, 3].map(i => getSafePlayerId(i, 1));
+    const thirds = [0, 1, 2, 3].map(i => getSafePlayerId(i, 2));
+    const fourths = [0, 1, 2, 3].map(i => getSafePlayerId(i, 3));
     
     return [
         {
@@ -304,6 +323,18 @@ export function createFinalsOnlyFor4Boxes(boxStandings: BoxStanding[], date: str
             team1: [seconds[0], seconds[1]],
             team2: [seconds[2], seconds[3]],
             sets: [], winner: null,
+        },
+        {
+            date,
+            team1: [thirds[0], thirds[1]],
+            team2: [thirds[2], thirds[3]],
+            sets: [], winner: null,
+        },
+        {
+            date,
+            team1: [fourths[0], fourths[1]],
+            team2: [fourths[2], fourths[3]],
+            sets: [], winner: null,
         }
     ];
 }
@@ -314,26 +345,45 @@ export function createSemifinalsAndFinalsFor4PlusBoxes(
     semifinalResults?: { sf1Winner: 'team1' | 'team2', sf2Winner: 'team1' | 'team2' }
 ): { semifinals: Omit<Match, 'id' | 'tournamentId'>[]; finals: Omit<Match, 'id' | 'tournamentId'>[] } {
     
+    // Extraggo tutti i giocatori validi e li ordino per punti e differenza reti
+    const allPlayersRanked = boxStandings.flatMap(b => b.standings).filter(s => s && s.player);
+    allPlayersRanked.sort((a, b) => b.points - a.points || b.gameDifference - a.gameDifference);
+    
+    // Prendo i migliori 8 giocatori (4 coppie per le semifinali principali)
+    const top8 = allPlayersRanked.slice(0, 8);
+    
+    // Prendo i successivi 8 (dal 9° al 16°) per eventuali semifinali di consolazione
+    const next8 = allPlayersRanked.slice(8, 16);
+    
+    const getSafeId = (arr: typeof allPlayersRanked, index: number) => {
+        return arr[index] ? arr[index].player.id : `dummy-${index}`;
+    };
+
     const semifinals: Omit<Match, 'id' | 'tournamentId'>[] = [];
     
-    for (let i = 0; i < boxStandings.length; i += 2) {
-        if (i + 1 >= boxStandings.length) break;
-        const b1 = boxStandings[i].standings;
-        const b2 = boxStandings[i + 1].standings;
-        
-        semifinals.push({
-            date,
-            team1: [b1[0].player.id, b2[1].player.id], // Incrociati
-            team2: [b2[0].player.id, b1[1].player.id], // Incrociati
-            sets: [], winner: null,
-        });
-    }
+    // SF1: 1st & 8th vs 4th & 5th
+    // SF2: 2nd & 7th vs 3rd & 6th
+    semifinals.push({
+        date,
+        team1: [getSafeId(top8, 0), getSafeId(top8, 7)],
+        team2: [getSafeId(top8, 3), getSafeId(top8, 4)],
+        sets: [], winner: null,
+    });
+    
+    semifinals.push({
+        date,
+        team1: [getSafeId(top8, 1), getSafeId(top8, 6)],
+        team2: [getSafeId(top8, 2), getSafeId(top8, 5)],
+        sets: [], winner: null,
+    });
     
     const finals: Omit<Match, 'id' | 'tournamentId'>[] = [];
-    if (semifinalResults && semifinals.length >= 2) {
+    
+    if (semifinalResults) {
         const sf1 = semifinals[0];
         const sf2 = semifinals[1];
         
+        // Final 1st/2nd place
         finals.push({
             date,
             team1: semifinalResults.sf1Winner === 'team1' ? sf1.team1 : sf1.team2,
@@ -341,12 +391,23 @@ export function createSemifinalsAndFinalsFor4PlusBoxes(
             sets: [], winner: null,
         });
         
+        // Final 3rd/4th place
         finals.push({
             date,
             team1: semifinalResults.sf1Winner === 'team1' ? sf1.team2 : sf1.team1,
             team2: semifinalResults.sf2Winner === 'team1' ? sf2.team2 : sf2.team1,
             sets: [], winner: null,
         });
+
+        // Partita Consolazione: uso il next8 per generare una finale di consolazione "secca"
+        if (next8.length >= 4) {
+             finals.push({
+                 date,
+                 team1: [getSafeId(next8, 0), getSafeId(next8, 3)],
+                 team2: [getSafeId(next8, 1), getSafeId(next8, 2)],
+                 sets: [], winner: null,
+             });
+        }
     }
     
     return { semifinals, finals };

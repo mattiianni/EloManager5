@@ -61,7 +61,18 @@ const HistorySkeleton: React.FC = () => (
 
 const processBeatTheBoxData = (matches: Match[], getPlayerById: (id: string) => Player | undefined) => {
  // Use player-set grouping (order-independent) to separate box matches from phase matches
- const { boxes: groupedBoxes, phaseMatches: remainingMatches } = groupMatchesByPlayerSets(matches);
+ const { boxes: groupedBoxes, phaseMatches: rawPhaseMatches } = groupMatchesByPlayerSets(matches);
+ 
+ // Deduplicate phase matches to fix old DBs with duplicated finals
+ const seenPhaseMatches = new Set<string>();
+ const remainingMatches = rawPhaseMatches.filter(m => {
+     const signature = [...m.team1].sort().join(',') + '|' + [...m.team2].sort().join(',');
+     const signatureReverse = [...m.team2].sort().join(',') + '|' + [...m.team1].sort().join(',');
+     if (seenPhaseMatches.has(signature) || seenPhaseMatches.has(signatureReverse)) return false;
+     seenPhaseMatches.add(signature);
+     return true;
+ });
+ 
  const numBoxes = groupedBoxes.size;
  const boxMatches = Array.from(groupedBoxes.values()).flat();
  
@@ -81,15 +92,82 @@ const processBeatTheBoxData = (matches: Match[], getPlayerById: (id: string) => 
  return { ...match, winner } as Match;
  });
  
- // Separate semifinals and finals
+ // Separate semifinals and finals topologically to handle out-of-order DB rows
  let semifinalMatches: Match[] = [];
  let finalMatches: Match[] = [];
-     if (remainingMatches.length >= 4) {
-        semifinalMatches = remainingMatches.slice(0, 2);
-        finalMatches = remainingMatches.slice(2);
-    } else {
-        finalMatches = remainingMatches;
-    }
+
+ if (remainingMatches.length >= 4) {
+     const allPlayerOccurrences = new Map<string, number>();
+     remainingMatches.forEach(m => {
+         m.team1.concat(m.team2).forEach(p => {
+             allPlayerOccurrences.set(p, (allPlayerOccurrences.get(p) || 0) + 1);
+         });
+     });
+     
+     let consolazioneMatch: Match | null = null;
+     const mainMatches: Match[] = [];
+     
+     remainingMatches.forEach(m => {
+         // Partita Consolazione players only appear once across all phase matches
+         const isConsolazione = m.team1.concat(m.team2).every(p => allPlayerOccurrences.get(p) === 1);
+         if (isConsolazione) {
+             consolazioneMatch = m;
+         } else {
+             mainMatches.push(m);
+         }
+     });
+
+     if (mainMatches.length === 4) {
+         let foundSemis = false;
+         for (let i = 0; i < 4; i++) {
+             for (let j = i + 1; j < 4; j++) {
+                 const s1 = mainMatches[i];
+                 const s2 = mainMatches[j];
+                 
+                 if (!s1.winner || !s2.winner || s1.winner === 'draw' || s2.winner === 'draw') continue;
+
+                 const w1 = s1.winner === 'team1' ? s1.team1 : s1.team2;
+                 const w2 = s2.winner === 'team1' ? s2.team1 : s2.team2;
+                 const l1 = s1.winner === 'team1' ? s1.team2 : s1.team1;
+                 const l2 = s2.winner === 'team1' ? s2.team2 : s2.team1;
+
+                 const isMatchBetween = (m: Match, tA: string[], tB: string[]) => {
+                     const m1 = [...m.team1].sort().join(',');
+                     const m2 = [...m.team2].sort().join(',');
+                     const a = [...tA].sort().join(',');
+                     const b = [...tB].sort().join(',');
+                     return (m1 === a && m2 === b) || (m1 === b && m2 === a);
+                 };
+
+                 const otherMatches = mainMatches.filter(m => m !== s1 && m !== s2);
+                 const finale12 = otherMatches.find(m => isMatchBetween(m, w1, w2));
+                 const finale34 = otherMatches.find(m => isMatchBetween(m, l1, l2));
+
+                 if (finale12 && finale34) {
+                     semifinalMatches = [s1, s2];
+                     finalMatches = [finale12, finale34];
+                     foundSemis = true;
+                     break;
+                 }
+             }
+             if (foundSemis) break;
+         }
+
+         if (!foundSemis) {
+             semifinalMatches = mainMatches.slice(0, 2);
+             finalMatches = mainMatches.slice(2);
+         }
+     } else {
+         semifinalMatches = remainingMatches.slice(0, 2);
+         finalMatches = remainingMatches.slice(2);
+     }
+
+     if (consolazioneMatch && finalMatches.length === 2) {
+         finalMatches.push(consolazioneMatch);
+     }
+ } else {
+     finalMatches = remainingMatches;
+ }
  
  // Create boxes from player-set grouping (already grouped correctly)
  const boxes: { boxNumber: number; players: Player[]; matches: Match[] }[] = [];
@@ -180,9 +258,10 @@ interface MatchesPageProps {
  tournamentToOpen?: string | null;
  setTournamentToOpen?: (id: string | null) => void;
  onNavigateToTeamTournamentMatchdayResults?: (tournamentDayId: string) => void;
+ setActivePage?: (page: string) => void;
 }
 
-const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTournamentToOpen, onNavigateToTeamTournamentMatchdayResults }) => {
+const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTournamentToOpen, onNavigateToTeamTournamentMatchdayResults, setActivePage }) => {
  const { players, matches, tournaments, eloHistory, addMatch, deleteMatch, getPlayerById, deleteTournament, updateTournamentMatches, cascadeResetTournament, loading, fetchData } = usePadelStore();
  const [team1Player1, setTeam1Player1] = useState('');
  const [team1Player2, setTeam1Player2] = useState('');
@@ -232,6 +311,11 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  const [gironiFinalMatches, setGironiFinalMatches] = useState<Match[]>([]);
  const [showGironiCompleteConfirm, setShowGironiCompleteConfirm] = useState(false);
  const [showGironiCompleteSuccess, setShowGironiCompleteSuccess] = useState(false);
+
+    // Nuovi stati per conferme e successi (Salvataggio Parziale e Conferma Chiusura Fasi)
+    const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+    const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
+    const [proceedConfirmData, setProceedConfirmData] = useState<{ isOpen: boolean; title: string; message: string; actionText: string; onConfirm: () => void }>({ isOpen: false, title: "", message: "", actionText: "", onConfirm: () => {} });
 
  useEffect(() => {
  if (editingTournament) {
@@ -756,7 +840,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
 
  if (existingFinalsMatches.length === 0) {
  // No finals yet - generate and show standings modal
- const { semifinals, finals } = createBeatBoxFinalsMatches(numBoxes, standings, tournament.date);
+ const { semifinals, finals } = createBeatBoxFinalsMatches(numBoxes, standings, tournament.date, undefined, (tournament.playoffType as any) || 'semifinals');
  if (semifinals && semifinals.length > 0) {
  setBeatBoxSemifinalMatches(semifinals.map((m, i) => ({
  ...m, id: `temp-sf-${i}`, tournamentId: tournament.id
@@ -838,6 +922,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
          await deleteTournament(deleteAlert.tournamentId, cascade);
      }
      setDeleteAlert({ isOpen: false, tournamentId: null });
+     setShowDeleteSuccess(true);
  };
  
  const handleSubmit = async (e: React.FormEvent) => {
@@ -869,8 +954,8 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  }
  };
 
- const handleEditScoresSubmit = async (e: React.FormEvent) => {
- e.preventDefault();
+ const submitEditScores = async (e?: React.FormEvent | null, onlySave: boolean = false) => {
+ if (e) e.preventDefault();
  if (!editingTournament) return;
 
  const isRoundRobinFinali = editingTournament.type === TournamentType.RoundRobinFinali;
@@ -912,11 +997,19 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
 
  setIsSubmitting(true);
  try {
- console.log(`💾 [handleEditScoresSubmit] Saving ${matchUpdates.length} match updates:`, matchUpdates.map(u => ({
+ console.log(`💾 [submitEditScores] Saving ${matchUpdates.length} match updates:`, matchUpdates.map(u => ({
  id: u.matchId.substring(0, 8),
  sets: u.sets
  })));
  await updateTournamentMatches(matchUpdates, true);
+
+ // Se l'utente ha richiesto solo un salvataggio parziale (es. durante la fase a gironi/box/ecc)
+ if (onlySave) {
+     await fetchData(); // Assicura che i match siano aggiornati localmente
+     setEditingTournament(null);
+     setShowSaveSuccess(true);
+     return; // Interrompe il flusso senza generare le fasi successive
+ }
 
  // ====== CAPTURE INITIAL PHASE MATCHES BEFORE CASCADE ======
  // These matches won't be deleted, so we can safely use them later
@@ -997,9 +1090,11 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  
  // Genera finali/semifinali
  const { semifinals, finals } = createBeatBoxFinalsMatches(
- numBoxes,
- standings,
- editingTournament.date
+     numBoxes,
+     standings,
+     editingTournament.date,
+     undefined, // semifinalResults
+     (editingTournament.playoffType as any) || 'semifinals'
  );
  
  if (semifinals && semifinals.length > 0) {
@@ -1248,7 +1343,13 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  ...beatBoxFinalMatches
  ];
  
- for (const match of allNewMatches) {
+ const existing = allNewMatches.filter(m => !m.id.startsWith('temp-'));
+ if (existing.length > 0) {
+     await updateTournamentMatches(existing.map(m => ({ matchId: m.id, sets: m.sets, winner: m.winner })), true);
+ }
+ 
+ const temp = allNewMatches.filter(m => m.id.startsWith('temp-'));
+ for (const match of temp) {
  const matchResponse = await fetch('/api/matches', {
  method: 'POST',
  headers: authHeaders(),
@@ -1264,6 +1365,8 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  if (!matchResponse.ok) {
  throw new Error('Failed to save match');
  }
+ const savedMatch = await matchResponse.json();
+ match.id = savedMatch.id;
  }
 
  // Completa il torneo
@@ -1283,7 +1386,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  const allTournamentMatches = matches.filter(m => m.tournamentId === tournament.id);
  const allMatchesWithNewOnes = [
  ...allTournamentMatches,
- ...allNewMatches.map((m, i) => ({ ...m, id: `new-${i}` }))
+ ...allNewMatches
  ];
  
  // Calcola variazioni ELO individuali
@@ -1325,7 +1428,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  const team2Avg = (t2e1 + t2e2) / 2;
  
  const expected1 = 1 / (1 + Math.pow(10, (team2Avg - team1Avg) / 400));
- const score1 = match.winner === 'team1' ? 1 : 0;
+ const score1 = match.winner === 'draw' ? 0.5 : (match.winner === 'team1' ? 1 : 0);
  const delta1 = K * (score1 - expected1);
  const delta2 = -delta1;
  
@@ -1385,7 +1488,50 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  }
  };
 
- const toggleExpand = (id: string) => {
+ /**
+     * Salva le partite di una fase intermedia (semifinali / finali) nel DB
+     * senza chiudere il torneo. Usato dal bottone "Salva" presente in ogni step.
+     */
+    const savePhaseMatches = async (matchesList: Match[], tId: string) => {
+        const allToSave = matchesList.filter(m => m.sets && m.sets.length > 0 && m.sets.some(s => s.team1 > 0 || s.team2 > 0));
+        if (allToSave.length === 0) {
+            setShowSaveSuccess(true);
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            const existing = allToSave.filter(m => !m.id.startsWith('temp-'));
+            if (existing.length > 0) {
+                await updateTournamentMatches(existing.map(m => ({ matchId: m.id, sets: m.sets, winner: m.winner })), true);
+            }
+            const temp = allToSave.filter(m => m.id.startsWith('temp-'));
+            for (const match of temp) {
+                const res = await fetch('/api/matches', {
+                    method: 'POST',
+                    headers: authHeaders(),
+                    body: JSON.stringify({
+                        date: match.date,
+                        team1: match.team1,
+                        team2: match.team2,
+                        sets: match.sets,
+                        winner: match.winner,
+                        tournamentId: tId,
+                    }),
+                });
+                if (res.ok) {
+                    const savedMatch = await res.json();
+                    match.id = savedMatch.id; // UPDATE LOCAL ID
+                }
+            }
+            setShowSaveSuccess(true);
+        } catch (e) {
+            alert('Errore nel salvataggio. Riprova.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const toggleExpand = (id: string) => {
  setExpandedItems(prev => {
  const newSet = new Set(prev);
  if (newSet.has(id)) {
@@ -1462,12 +1608,12 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  {isMatchFormOpen && (
  <form onSubmit={handleSubmit} className="space-y-6">
  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
- <div className="space-y-2 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+ <div className="space-y-2 py-2 border-b border-gray-100 dark:border-gray-800">
  <h4 className="font-semibold text-lg text-gray-900 dark:text-white">Squadra 1</h4>
  <PlayerSelect players={sortedPlayers} selectedPlayers={selectedPlayers} value={team1Player1} onChange={e => setTeam1Player1(e.target.value)} disabled={isSubmitting} />
  <PlayerSelect players={sortedPlayers} selectedPlayers={selectedPlayers} value={team1Player2} onChange={e => setTeam1Player2(e.target.value)} disabled={isSubmitting} />
  </div>
- <div className="space-y-2 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+ <div className="space-y-2 py-2 border-b border-gray-100 dark:border-gray-800">
  <h4 className="font-semibold text-lg text-gray-900 dark:text-white">Squadra 2</h4>
  <PlayerSelect players={sortedPlayers} selectedPlayers={selectedPlayers} value={team2Player1} onChange={e => setTeam2Player1(e.target.value)} disabled={isSubmitting} />
  <PlayerSelect players={sortedPlayers} selectedPlayers={selectedPlayers} value={team2Player2} onChange={e => setTeam2Player2(e.target.value)} disabled={isSubmitting} />
@@ -1489,7 +1635,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  )}
  </Card>
 
- <div className="px-1 pt-3 -mb-3">
+ <div className="px-3 md:px-4 pt-3 mb-4">
     <div>
         <h2 className="text-[1.62rem] font-black leading-none tracking-tight text-sky-500 dark:text-sky-300 sm:text-[1.78rem] md:text-[2.25rem]">
             Modifica Risultati
@@ -1656,7 +1802,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  }} 
  title={editingTournament?.status === 'scheduled' ?"Inserisci Risultati" :"Modifica Risultati"}
  >
- <form onSubmit={handleEditScoresSubmit} className="px-4 pb-4 pt-2">
+ <form onSubmit={(e) => submitEditScores(e, false)} className="px-4 pb-4 pt-2">
  {editingTournament?.type === TournamentType.RoundRobinFinali && editingTournament?.status === 'scheduled' && (
  <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
  <h3 className="font-semibold text-gray-900 dark:text-white">Round Robin - Fase a Gironi</h3>
@@ -1840,7 +1986,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  if (!team1[0] || !team2[0]) return null;
 
  return (
- <div key={match.id} className="grid grid-cols-3 items-center gap-2 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
+ <div key={match.id} className="grid grid-cols-3 items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
  <div className="text-right text-sm">
  <p className="font-semibold">{team1[0].name} & {team1[1].name}</p>
  <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}</p>
@@ -1859,28 +2005,70 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  });
  })()}
  </div>
- <div className="flex justify-end pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
- <Button type="button" variant="secondary" onClick={() => {
- setEditingTournament(null);
- setIsInFinalsPhase(false);
- setShowGironiStandingsModal(false);
- setIsInGironiSemifinalsPhase(false);
- setIsInGironiFinalsPhase(false);
- }} className="mr-2" disabled={isSubmitting}>Cancel</Button>
- <Button type="submit" disabled={isSubmitting}>
- {isSubmitting ? 'Salvataggio...' : (
- editingTournament?.status === 'scheduled' && editingTournament?.type === TournamentType.RoundRobinFinali
- ? 'Calcola Classifica'
- : editingTournament?.status === 'scheduled' && editingTournament?.type === TournamentType.BeatTheBox
- ? 'Calcola Qualificati'
- : editingTournament?.status === 'scheduled' && editingTournament?.type === TournamentType.GironiFaseFinale
- ? 'Calcola Semifinalisti'
- : editingTournament?.status === 'scheduled' 
- ? 'Completa Torneo' 
- : 'Salva Modifiche'
- )}
- </Button>
- </div>
+ <div className="flex gap-3 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+      <Button type="button" variant="secondary" onClick={() => {
+          setEditingTournament(null);
+          setIsInFinalsPhase(false);
+          setShowGironiStandingsModal(false);
+          setIsInGironiSemifinalsPhase(false);
+          setIsInGironiFinalsPhase(false);
+      }} className="flex-1" disabled={isSubmitting}>Annulla</Button>
+      
+      {editingTournament?.status === 'scheduled' && (
+          <Button type="button" onClick={() => submitEditScores(null, true)} disabled={isSubmitting} className="flex-1">
+              {isSubmitting ? 'Salvataggio...' : 'Salva'}
+          </Button>
+      )}
+
+      <Button type="button" onClick={() => {
+          if (editingTournament?.status === 'completed') {
+              submitEditScores(null, false);
+              return;
+          }
+
+          let title = "Conferma";
+          let message = "Vuoi procedere?";
+          let actionText = "Procedi";
+          
+          if (editingTournament?.type === TournamentType.RoundRobinFinali) {
+              title = "Chiudi Round Robin";
+              message = "Hai inserito tutti i risultati? Vuoi calcolare le classifiche e procedere alla fase finale?";
+              actionText = "Calcola Classifica";
+          } else if (editingTournament?.type === TournamentType.BeatTheBox) {
+              title = "Chiudi Fase a Box";
+              message = "Confermi di voler chiudere la fase a Box e generare i tabelloni finali?";
+              actionText = "Calcola Qualificati";
+          } else if (editingTournament?.type === TournamentType.GironiFaseFinale) {
+              title = "Chiudi Gironi";
+              message = "Hai inserito tutti i risultati? Vuoi calcolare le classifiche e procedere alle semifinali?";
+              actionText = "Calcola Semifinalisti";
+          } else {
+              title = "Chiudi Giornata";
+              message = "Confermi di voler chiudere definitivamente la giornata? Gli ELO verranno aggiornati.";
+              actionText = "Completa Torneo";
+          }
+          
+          setProceedConfirmData({
+              isOpen: true,
+              title,
+              message,
+              actionText,
+              onConfirm: () => submitEditScores(null, false)
+          });
+      }} disabled={isSubmitting} className={editingTournament?.status === 'scheduled' ? "flex-1 !border-emerald-700/50 !bg-emerald-600 hover:!bg-emerald-700 !text-white dark:!border-emerald-300/35" : "flex-1"}>
+          {isSubmitting ? 'Salvataggio...' : (
+              editingTournament?.status === 'scheduled' && editingTournament?.type === TournamentType.RoundRobinFinali
+                  ? 'Calcola Classifica'
+                  : editingTournament?.status === 'scheduled' && editingTournament?.type === TournamentType.BeatTheBox
+                      ? 'Calcola Qualificati'
+                      : editingTournament?.status === 'scheduled' && editingTournament?.type === TournamentType.GironiFaseFinale
+                          ? 'Calcola Semifinalisti'
+                          : editingTournament?.status === 'scheduled' 
+                              ? 'Chiudi Giornata' 
+                              : 'Salva Modifiche'
+          )}
+      </Button>
+  </div>
  </form>
  </HIGSheet>
  
@@ -2116,7 +2304,6 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  })}
  </div>
  </div>
- 
  <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
  <Button 
  onClick={() => {
@@ -2129,9 +2316,16 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  >
  Annulla
  </Button>
+ <Button
+ onClick={() => savePhaseMatches(finalsMatches, (finalsFlowTournament || editingTournament)!.id)}
+ disabled={isSubmitting}
+ className="flex-1"
+ >
+ {isSubmitting ? 'Salvataggio...' : 'Salva'}
+ </Button>
  <Button 
  onClick={handleCompleteTournamentWithFinals}
- className="flex-1"
+ className="flex-1 !border-emerald-700/50 !bg-emerald-600 hover:!bg-emerald-700 !text-white dark:!border-emerald-300/35"
  disabled={isSubmitting || Object.keys(finalsScores).length !== finalsMatches.length}
  >
  {isSubmitting ? 'Finalizzando...' : 'Finalizza Torneo'}
@@ -2148,7 +2342,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  >
  <div className="space-y-4 px-4 pb-6 pt-2">
  {beatBoxStandings.map((boxStanding, boxIdx) => (
- <div key={boxIdx} className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+ <div key={boxIdx} className="py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
  <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Box {boxStanding.boxNumber}</h4>
  <div className="space-y-2">
  {boxStanding.standings.map((standing: any, index: number) => (
@@ -2182,6 +2376,9 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  setBeatBoxFinalMatches([]);
  setBeatBoxSemifinalMatches([]);
  setBeatBoxStandings([]);
+ setBeatBoxFinalStandings([]);
+ setBeatBoxAllMatches([]);
+ setShowBeatBoxStandingsModal(false);
  }}
  variant="secondary"
  className="flex-1"
@@ -2235,7 +2432,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  return (
  <div key={idx}>
  <h4 className="font-semibold mb-2 text-center">Semifinale {idx + 1}</h4>
- <div className="grid grid-cols-3 items-center gap-2 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
+ <div className="grid grid-cols-3 items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
  <div className="text-right text-sm">
  <p className="font-semibold">{team1[0].name} & {team1[1].name}</p>
  </div>
@@ -2274,6 +2471,13 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  >
  Indietro
  </Button>
+ <Button
+ onClick={() => savePhaseMatches(beatBoxSemifinalMatches, finalsFlowTournament!.id)}
+ disabled={isSubmitting}
+ className="flex-1"
+ >
+ {isSubmitting ? 'Salvataggio...' : 'Salva'}
+ </Button>
  <Button 
  onClick={async () => {
  // Verifica che le semifinali siano state generate e abbiano un vincitore
@@ -2281,38 +2485,29 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  alert('⚠️ Errore: semifinali non generate correttamente.');
  return;
  }
- const allComplete = beatBoxSemifinalMatches.every(m => m.winner);
+ const allComplete = beatBoxSemifinalMatches.every(m => m.winner && m.winner !== 'draw');
  if (!allComplete) {
  alert('⚠️ Inserisci i risultati di tutte le semifinali');
  return;
  }
  
  // Crea finali dai risultati delle semifinali
- const sf1Winner = beatBoxSemifinalMatches[0].winner === 'team1' ? beatBoxSemifinalMatches[0].team1 : beatBoxSemifinalMatches[0].team2;
- const sf1Loser = beatBoxSemifinalMatches[0].winner === 'team1' ? beatBoxSemifinalMatches[0].team2 : beatBoxSemifinalMatches[0].team1;
- const sf2Winner = beatBoxSemifinalMatches[1].winner === 'team1' ? beatBoxSemifinalMatches[1].team1 : beatBoxSemifinalMatches[1].team2;
- const sf2Loser = beatBoxSemifinalMatches[1].winner === 'team1' ? beatBoxSemifinalMatches[1].team2 : beatBoxSemifinalMatches[1].team1;
- 
- setBeatBoxFinalMatches([
- {
- id: 'temp-final-1',
- date: finalsFlowTournament!.date,
- team1: sf1Winner,
- team2: sf2Winner,
- sets: [],
- winner: null,
- tournamentId: finalsFlowTournament!.id,
- },
- {
- id: 'temp-final-2',
- date: finalsFlowTournament!.date,
- team1: sf1Loser,
- team2: sf2Loser,
- sets: [],
- winner: null,
- tournamentId: finalsFlowTournament!.id,
- },
- ]);
+ const sfResults = {
+     sf1Winner: beatBoxSemifinalMatches[0].winner as 'team1' | 'team2',
+     sf2Winner: beatBoxSemifinalMatches[1].winner as 'team1' | 'team2',
+ };
+ const { finals } = createBeatBoxFinalsMatches(
+     beatBoxNumBoxes,
+     beatBoxStandings,
+     finalsFlowTournament!.date,
+     sfResults,
+     finalsFlowTournament!.playoffType || 'semifinals'
+ );
+ setBeatBoxFinalMatches(finals.map((m, i) => ({
+     ...m,
+     id: `temp-final-${i}`,
+     tournamentId: finalsFlowTournament!.id
+ })));
  
  setIsInBeatBoxSemifinalsPhase(false);
  setTimeout(() => {
@@ -2362,7 +2557,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  return (
  <div key={idx}>
  <h4 className="font-semibold mb-2 text-center">{matchTitle}</h4>
- <div className="grid grid-cols-3 items-center gap-2 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
+ <div className="grid grid-cols-3 items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
  <div className="text-right text-sm">
  <p className="font-semibold">{team1[0].name} & {team1[1].name}</p>
  </div>
@@ -2406,8 +2601,16 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  Indietro
  </Button>
  <Button 
+ onClick={() => savePhaseMatches(beatBoxFinalMatches, finalsFlowTournament!.id)}
+ variant="secondary"
+ className="flex-1"
+ disabled={isSubmitting}
+ >
+ Salva
+ </Button>
+ <Button 
  onClick={() => {
- const allComplete = beatBoxFinalMatches.every(m => m.winner);
+ const allComplete = beatBoxFinalMatches.every(m => m.winner && m.winner !== 'draw');
  if (!allComplete) {
  alert('⚠️ Inserisci i risultati di tutte le finali');
  return;
@@ -2472,7 +2675,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  }}
  title="🏆 Beat the Box - Risultati Finali"
  >
- <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+ <div className="space-y-4 px-4 pb-6 pt-2 max-h-[70vh] overflow-y-auto">
  <div className="text-center p-3 bg-green-50 dark:bg-green-900 rounded">
  <h3 className="font-semibold text-green-800 dark:text-green-200">Torneo completato!</h3>
  <p className="text-sm text-green-700 dark:text-green-300">Gli ELO sono stati aggiornati. Ecco il riepilogo finale.</p>
@@ -2615,7 +2818,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  title="🏆 Gironi + Fase Finale - Semifinali"
  >
  <div className="space-y-4 px-4 pb-6 pt-2">
- <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+ <div className="mb-4 p-1">
  <h3 className="font-semibold text-gray-900 dark:text-white">Semifinali</h3>
  <p className="text-sm text-gray-700 dark:text-gray-300">
  Inserisci i risultati delle semifinali.
@@ -2629,7 +2832,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  if (!team1[0] || !team2[0]) return null;
  
  return (
- <div key={idx} className="bg-gray-50 dark:bg-gray-800/20 p-4 rounded-lg border-2 border-ios-blue dark:border-ios-blue">
+ <div key={idx} className="py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
  <h4 className="font-semibold mb-3 text-gray-900 dark:text-gray-300">Semifinale {idx + 1}</h4>
  <div className="grid grid-cols-3 items-center gap-4">
  <div className="text-sm">
@@ -2673,13 +2876,21 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  Indietro
  </Button>
  <Button 
+ onClick={() => savePhaseMatches(gironiSemifinalMatches, finalsFlowTournament!.id)}
+ variant="secondary"
+ className="flex-1"
+ disabled={isSubmitting}
+ >
+ Salva
+ </Button>
+ <Button 
  onClick={async () => {
  // Verifica che le semifinali siano state generate e abbiano un vincitore
  if (gironiSemifinalMatches.length < 2) {
  alert('⚠️ Errore: semifinali non generate correttamente.');
  return;
  }
- const allComplete = gironiSemifinalMatches.every(m => m.winner);
+ const allComplete = gironiSemifinalMatches.every(m => m.winner && m.winner !== 'draw');
  if (!allComplete) {
  alert('⚠️ Inserisci i risultati di tutte le semifinali');
  return;
@@ -2807,89 +3018,136 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  >
  Indietro
  </Button>
- <Button 
- onClick={async () => {
- const allComplete = gironiFinalMatches.every(m => m.winner);
- if (!allComplete) {
- alert('⚠️ Inserisci i risultati di tutte le finali');
- return;
- }
- 
- // Completa il torneo
- const tournament = finalsFlowTournament;
- if (!tournament) {
- alert('❌ Errore: riferimento torneo non disponibile');
- return;
- }
- 
- setIsSubmitting(true);
- 
- try {
- // Salva tutte le partite (semifinali + finali) nel DB
- const allNewMatches = [
- ...gironiSemifinalMatches,
- ...gironiFinalMatches
- ];
- 
- for (const match of allNewMatches) {
- const matchResponse = await fetch('/api/matches', {
- method: 'POST',
- headers: authHeaders(),
- body: JSON.stringify({
- date: match.date,
- team1: match.team1,
- team2: match.team2,
- sets: match.sets,
- winner: match.winner,
- tournamentId: tournament.id,
- }),
- });
- if (!matchResponse.ok) {
- throw new Error('Failed to save match');
- }
- }
-
- // Completa il torneo
- const completeResponse = await fetch('/api/tournaments/complete', {
- method: 'PUT',
- headers: authHeaders(),
- body: JSON.stringify({ tournamentId: tournament.id }),
- });
- 
- if (!completeResponse.ok) {
- throw new Error('Failed to complete tournament');
- }
- 
- console.log('✅ Gironi + Fase Finale tournament completed successfully');
- alert('Torneo completato! Gli ELO sono stati aggiornati.');
- 
- // Reset states
- setEditingTournament(null);
- setFinalsFlowTournament(null);
- setIsInGironiFinalsPhase(false);
- setIsInGironiSemifinalsPhase(false);
- setGironiFinalMatches([]);
- setGironiSemifinalMatches([]);
- setGironiStandings([]);
- setShowGironiStandingsModal(false);
-
- await fetchData();
- } catch (error) {
- console.error("Failed to complete tournament:", error);
- alert('Errore nel completamento del torneo. Riprova.');
- await fetchData();
- } finally {
- setIsSubmitting(false);
- }
- }}
- className="flex-1"
+ <Button
+ onClick={() => savePhaseMatches(gironiFinalMatches, finalsFlowTournament!.id)}
  disabled={isSubmitting}
+ className="flex-1"
  >
- {isSubmitting ? 'Salvataggio...' : 'Conferma e Salva'}
+ {isSubmitting ? 'Salvataggio...' : 'Salva'}
  </Button>
+ <Button 
+ onClick={() => {
+                            const allComplete = gironiFinalMatches.every(m => m.winner && m.winner !== 'draw');
+                            if (!allComplete) {
+                                alert('⚠️ Inserisci i risultati di tutte le finali');
+                                return;
+                            }
+                            setProceedConfirmData({
+                                isOpen: true,
+                                title: "Completa Torneo",
+                                message: "Confermi di voler completare il torneo? Gli ELO verranno aggiornati definitivamente.",
+                                actionText: "Finalizza Torneo",
+                                onConfirm: async () => {
+                                    const tournament = finalsFlowTournament;
+                                    if (!tournament) return;
+                                    setIsSubmitting(true);
+                                    try {
+                                        const allNewMatches = [...gironiSemifinalMatches, ...gironiFinalMatches];
+                                        for (const match of allNewMatches) {
+                                            const res = await fetch('/api/matches', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ ...match, tournamentId: tournament.id })
+                                            });
+                                            if(!res.ok) throw new Error('Failed to save match');
+                                        }
+                                        const compRes = await fetch('/api/tournaments/complete', {
+                                            method: 'PUT',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ tournamentId: tournament.id })
+                                        });
+                                        if(!compRes.ok) throw new Error('Failed to complete tournament');
+                                        
+                                        setEditingTournament(null);
+                                        setFinalsFlowTournament(null);
+                                        setIsInGironiFinalsPhase(false);
+                                        setIsInGironiSemifinalsPhase(false);
+                                        setGironiFinalMatches([]);
+                                        setGironiSemifinalMatches([]);
+                                        setGironiStandings([]);
+                                        setShowGironiStandingsModal(false);
+                                        if (typeof setActivePage === 'function') {
+                                            setActivePage('Tournaments');
+                                        }
+                                        window.location.reload();
+                                    } catch (e) {
+                                        alert('Errore.');
+                                    } finally {
+                                        setIsSubmitting(false);
+                                    }
+                                }
+                            });
+                        }}
+                        className="flex-1 !border-emerald-700/50 !bg-emerald-600 hover:!bg-emerald-700 !text-white dark:!border-emerald-300/35"
+                        disabled={isSubmitting}
+                    >
+                        {isSubmitting ? 'Salvataggio...' : 'Conferma e Salva'}
+                    </Button>
  </div>
  </div>
              </HIGSheet>
+                        {/* Nuovi popup per conferme e successi */}
+            <HIGSheet 
+                isOpen={proceedConfirmData.isOpen} 
+                onClose={() => setProceedConfirmData(prev => ({ ...prev, isOpen: false }))} 
+                title={proceedConfirmData.title}
+            >
+                <div className="p-4 space-y-4">
+                    <p className="text-gray-700 dark:text-gray-300">{proceedConfirmData.message}</p>
+                    <div className="flex gap-3 justify-end pt-2">
+                        <Button variant="secondary" onClick={() => setProceedConfirmData(prev => ({ ...prev, isOpen: false }))}>
+                            Annulla
+                        </Button>
+                        <Button className="!border-emerald-700/50 !bg-emerald-600 hover:!bg-emerald-700 !text-white dark:!border-emerald-300/35" onClick={() => {
+                            setProceedConfirmData(prev => ({ ...prev, isOpen: false }));
+                            proceedConfirmData.onConfirm();
+                        }}>
+                            {proceedConfirmData.actionText}
+                        </Button>
+                    </div>
+                </div>
+            </HIGSheet>
+
+            <HIGSheet
+                isOpen={showSaveSuccess}
+                onClose={() => {
+                    setShowSaveSuccess(false);
+                    if (typeof setActivePage === 'function') {
+                        setActivePage('Tournaments');
+                    }
+                }}
+                title="✅ Operazione Completata"
+            >
+                <div className="p-4 space-y-4 text-center">
+                    <p className="text-gray-700 dark:text-gray-300 text-lg">Salvataggio Effettuato!</p>
+                    <div className="flex justify-center pt-2">
+                        <Button onClick={() => {
+                             setShowSaveSuccess(false);
+                             if (typeof setActivePage === 'function') {
+                                 setActivePage('Tournaments');
+                             }
+                         }} className="w-full max-w-xs">
+                             OK
+                         </Button>
+                    </div>
+                </div>
+            </HIGSheet>
+
+            <HIGSheet
+                isOpen={showDeleteSuccess}
+                onClose={() => setShowDeleteSuccess(false)}
+                title="🗑️ Operazione Completata"
+            >
+                <div className="p-4 space-y-4 text-center">
+                    <p className="text-gray-700 dark:text-gray-300 text-lg">Cancellazione Effettuata!</p>
+                    <div className="flex justify-center pt-2">
+                        <Button onClick={() => setShowDeleteSuccess(false)} className="w-full max-w-xs">
+                            OK
+                        </Button>
+                    </div>
+                </div>
+            </HIGSheet>
+
             <HIGAlert
                 isOpen={deleteAlert.isOpen}
                 title="Elimina Giornata/Torneo"

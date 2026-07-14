@@ -105,22 +105,7 @@ export const HIGListRow: React.FC<HIGListRowProps> = ({
   onSwitchChange,
   className = '',
 }) => {
-  const [isPressed, setIsPressed] = React.useState(false);
-
-  const handlePointerDown = () => {
-    if (onPress) setIsPressed(true);
-  };
-
-  const handlePointerUp = () => {
-    if (onPress) {
-      setIsPressed(false);
-      onPress();
-    }
-  };
-
-  const handlePointerCancel = () => {
-    if (onPress) setIsPressed(false);
-  };
+  // Removed isPressed and pointer handlers to rely on CSS active state
 
   const accessoryElement = (() => {
     if (accessory === 'chevron') {
@@ -142,19 +127,15 @@ export const HIGListRow: React.FC<HIGListRowProps> = ({
 
   return (
     <div
-      className={`hig-list-row ${className}`}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerCancel}
-      onPointerLeave={handlePointerCancel}
+      className={`hig-list-row ${className} ${onPress ? 'active:bg-[var(--ios-quaternarySystemFill)] transition-colors duration-200' : ''}`}
+      onClick={onPress}
       style={{
         minHeight: '44px',
         display: 'flex',
         alignItems: 'center',
         padding: '11px 16px',
         cursor: onPress ? 'pointer' : 'default',
-        background: isPressed ? 'var(--ios-quaternarySystemFill)' : 'transparent',
-        transition: 'background 0.2s',
+        background: 'transparent',
       }}
     >
       {icon && (

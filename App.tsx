@@ -166,6 +166,7 @@ const App: React.FC = () => {
                         tournamentToOpen={tournamentToOpen}
                         setTournamentToOpen={setTournamentToOpen}
                         onNavigateToTeamTournamentMatchdayResults={handleNavigateToTeamTournamentMatchdayResults}
+                        setActivePage={setActivePage}
                     />
                 );
             case 'Draw':
@@ -245,7 +246,7 @@ const App: React.FC = () => {
                         theme={theme}
                         toggleTheme={toggleTheme}
                     />
-                    <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pt-2 pb-[calc(49px+env(safe-area-inset-bottom)+8px)] md:px-6 md:pt-4 md:pb-6 lg:px-8 lg:pb-8">
+                    <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pt-2 px-4 pb-[calc(49px+env(safe-area-inset-bottom,_0px)+8px)] md:px-6 md:pt-4 md:pb-6 lg:px-8 lg:pb-8">
                         <div className="fade-in mx-auto w-full max-w-[1600px]">
                             {renderPage()}
                         </div>

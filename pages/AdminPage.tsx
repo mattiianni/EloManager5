@@ -423,7 +423,9 @@ const AdminPage: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Pannello Admin</h2>
+            <div className="px-3 md:px-4 pt-3 mb-4">
+                <h2 className="text-[1.62rem] font-black leading-none tracking-tight text-sky-500 dark:text-sky-300 sm:text-[1.78rem] md:text-[2.25rem]">Pannello Admin</h2>
+            </div>
 
             {/* Tabs */}
             <div className="mb-6 px-4 md:px-0 max-w-2xl mx-auto">

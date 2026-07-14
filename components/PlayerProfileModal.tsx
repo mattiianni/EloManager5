@@ -328,9 +328,9 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
                             {partners.length === 0 ? (
                                 <p className="text-sm text-gray-400">Nessun dato.</p>
                             ) : (
-                                <div className="space-y-2">
+                                <div className="space-y-0">
                                     {partners.map((p, i) => (
-                                        <div key={i} className="flex items-center justify-between text-sm bg-gray-50 dark:bg-gray-700/50 rounded-lg px-3 py-2">
+                                        <div key={i} className="flex items-center justify-between text-sm border-b border-gray-200 dark:border-gray-800 py-2 last:border-0">
                                             <span className="font-medium text-gray-900 dark:text-white">
                                                 {p.player!.name} {p.player!.surname}
                                             </span>
@@ -347,9 +347,9 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, onClose
                             {opponents.length === 0 ? (
                                 <p className="text-sm text-gray-400">Nessun dato.</p>
                             ) : (
-                                <div className="space-y-2">
+                                <div className="space-y-0">
                                     {opponents.map((o, i) => (
-                                        <div key={i} className="flex items-center justify-between text-sm bg-gray-50 dark:bg-gray-700/50 rounded-lg px-3 py-2">
+                                        <div key={i} className="flex items-center justify-between text-sm border-b border-gray-200 dark:border-gray-800 py-2 last:border-0">
                                             <span className="font-medium text-gray-900 dark:text-white">
                                                 {o.player!.name} {o.player!.surname}
                                             </span>

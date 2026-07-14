@@ -211,6 +211,13 @@ async function ensureTablesExist() {
         logger.debug('Num gironi column update attempt', { message: error.message });
     }
 
+    // Add playoff_type column for Beat the Box
+    try {
+        await sql`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS playoff_type VARCHAR(50)`;
+    } catch (error) {
+        logger.debug('Playoff type column update attempt', { message: error.message });
+    }
+
     // Root tournament id for team tournaments (allows child "giornate" to inherit configuration state)
     try {
         await sql`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS team_tournament_root_id UUID`;
@@ -1558,7 +1565,7 @@ app.get('/api/data', async (req, res) => {
             sql`
                 SELECT 
                     t.id, t.name, t.type, t.date, t.club, t.status, t.americano_fields, t.americano_scoring_type, t.final_standings, t.giornata_name, t.num_gironi,
-                    t.team_tournament_root_id,
+                    t.playoff_type, t.team_tournament_root_id,
                     c.config_completed AS team_tournament_config_completed,
                     d.round_number AS team_tournament_round_number,
                     d.team1_number AS team_tournament_team1_number,
@@ -1606,6 +1613,7 @@ app.get('/api/data', async (req, res) => {
             finalStandings: t.final_standings || null,
             giornataName: t.giornata_name || null,
             numGironi: t.num_gironi || null,
+            playoffType: t.playoff_type || null,
             teamTournamentConfigCompleted: !!t.team_tournament_config_completed,
             teamTournamentRootId: t.team_tournament_root_id || null,
             teamTournamentRoundNumber: t.team_tournament_round_number || null,
@@ -2041,21 +2049,24 @@ app.put('/api/matches', async (req, res) => {
         logger.info('Updating match scores', { count: matchUpdates.length });
         
         for (const update of matchUpdates) {
-            const { matchId, sets } = update;
+            const { matchId, sets, winner: providedWinner } = update;
             if (!matchId || !sets || !Array.isArray(sets)) {
                 logger.warn('Invalid match update data', { matchId });
                 continue;
             }
             
-            // Calculate winner based on sets
+            // Calculate team games for logging/stats
             const team1Games = sets.reduce((sum, set) => sum + set.team1, 0);
             const team2Games = sets.reduce((sum, set) => sum + set.team2, 0);
             
-            let winner;
-            if (team1Games === team2Games) {
-                winner = 'draw';
-            } else {
-                winner = team1Games > team2Games ? 'team1' : 'team2';
+            // Use provided winner if available, otherwise fallback to games (legacy behavior)
+            let winner = providedWinner;
+            if (!winner) {
+                if (team1Games === team2Games) {
+                    winner = 'draw';
+                } else {
+                    winner = team1Games > team2Games ? 'team1' : 'team2';
+                }
             }
             
             // Update match with sets and winner
@@ -5258,8 +5269,8 @@ app.post('/api/tournaments/bulk-matches', async (req, res) => {
         // ALWAYS create a new tournament entry for each giornata
         // giornataName is used to link multiple giornate to the same tournament series
         const tournamentResult = await sql`
-            INSERT INTO tournaments (name, type, date, club, status, giornata_name, final_standings, americano_fields, americano_scoring_type, num_gironi, workspace_id)
-            VALUES (${tournament.name}, ${tournament.type}, ${tournament.date}, ${tournament.club}, ${tournament.status || 'scheduled'}, ${tournament.giornataName || null}, ${tournament.finalStandings ? JSON.stringify(tournament.finalStandings) : null}, ${tournament.americanoFields || null}, ${tournament.americanoScoringType || null}, ${tournament.numGironi || null}, ${req.workspaceId})
+            INSERT INTO tournaments (name, type, date, club, status, giornata_name, final_standings, americano_fields, americano_scoring_type, num_gironi, playoff_type, workspace_id)
+            VALUES (${tournament.name}, ${tournament.type}, ${tournament.date}, ${tournament.club}, ${tournament.status || 'scheduled'}, ${tournament.giornataName || null}, ${tournament.finalStandings ? JSON.stringify(tournament.finalStandings) : null}, ${tournament.americanoFields || null}, ${tournament.americanoScoringType || null}, ${tournament.numGironi || null}, ${tournament.playoffType || null}, ${req.workspaceId})
             RETURNING id
         `;
         tournamentId = tournamentResult[0].id;
@@ -5450,9 +5461,25 @@ app.put('/api/tournaments/complete', async (req, res) => {
         const matchesResult = await sql`
             SELECT id, team1_p1_id, team1_p2_id, team2_p1_id, team2_p2_id, sets, winner
             FROM matches WHERE tournament_id = ${tournamentId} AND workspace_id = ${req.workspaceId}
+            ORDER BY date ASC, id ASC
         `;
 
         logger.info("Processing tournament matches", { tournamentId, matchCount: matchesResult.length });
+
+        // Idempotency: clean up any existing elo_history for this tournament BEFORE loading player ELOs
+        const existingHistory = await sql`
+            SELECT player_id, delta FROM elo_history
+            WHERE event_id = ${tournamentId} AND type = 'tournament' AND workspace_id = ${req.workspaceId}
+        `;
+        if (existingHistory.length > 0) {
+            logger.warn("Found existing elo_history for tournament, reverting before re-completion", {
+                tournamentId, existingRecords: existingHistory.length
+            });
+            for (const record of existingHistory) {
+                await sql`UPDATE players SET current_elo = current_elo - ${record.delta} WHERE id = ${record.player_id} AND workspace_id = ${req.workspaceId}`;
+            }
+            await sql`DELETE FROM elo_history WHERE event_id = ${tournamentId} AND type = 'tournament' AND workspace_id = ${req.workspaceId}`;
+        }
 
         // Get tournament info
         const tournamentInfo = await sql`SELECT name, type, date FROM tournaments WHERE id = ${tournamentId} AND workspace_id = ${req.workspaceId}`;
@@ -5488,11 +5515,6 @@ app.put('/api/tournaments/complete', async (req, res) => {
 
         const playerEloChanges = new Map();
 
-        // Determine if this is Round Robin + Finali to use phase-specific K factors
-        const isRoundRobinFinali = tournamentType === 'Round Robin + Finali';
-        const totalMatches = matchesResult.length;
-        const roundRobinMatchCount = isRoundRobinFinali ? totalMatches - 2 : totalMatches;
-        
         // Process each match using tournament-specific ELO
         for (let matchIndex = 0; matchIndex < matchesResult.length; matchIndex++) {
             const match = matchesResult[matchIndex];
@@ -5512,31 +5534,26 @@ app.put('/api/tournaments/complete', async (req, res) => {
             const team2EloAvg = (team2P1Elo + team2P2Elo) / 2;
             const score1 = match.winner === 'team1' ? 1 : (match.winner === 'draw' ? 0.5 : 0);
             
-            // Determine phase for Round Robin + Finali
-            let phase;
+            // Determine phase securely using distance from end of array
+            let phase = null;
+            const isRoundRobinFinali = tournamentType === 'Round Robin + Finali';
             if (isRoundRobinFinali) {
-                if (matchIndex < roundRobinMatchCount) {
+                if (matchIndex === matchesResult.length - 2) {
+                    phase = 'finals1st2nd';
+                } else if (matchIndex === matchesResult.length - 1) {
+                    phase = 'finals3rd4th';
+                } else {
                     phase = 'roundRobin';
-                } else if (matchIndex === roundRobinMatchCount) {
-                    phase = 'finals1st2nd';
-                } else {
-                    phase = 'finals3rd4th';
                 }
-            }
-            
-            // Determine phase for Gironi + Fase Finale  
-            if (tournamentType === 'Gironi + Fase Finale') {
-                const finalsCount = 4;
-                const gironiMatchCount = totalMatches - finalsCount;
-                
-                if (matchIndex < gironiMatchCount) {
-                    phase = 'gironi';
-                } else if (matchIndex < gironiMatchCount + 2) {
-                    phase = 'semifinals';
-                } else if (matchIndex === gironiMatchCount + 2) {
-                    phase = 'finals3rd4th';
-                } else {
+            } else if (tournamentType === 'Gironi + Fase Finale') {
+                if (matchIndex === matchesResult.length - 1) {
                     phase = 'finals1st2nd';
+                } else if (matchIndex === matchesResult.length - 2) {
+                    phase = 'finals3rd4th';
+                } else if (matchIndex === matchesResult.length - 3 || matchIndex === matchesResult.length - 4) {
+                    phase = 'semifinals';
+                } else {
+                    phase = 'gironi';
                 }
             }
             
@@ -5578,33 +5595,22 @@ app.put('/api/tournaments/complete', async (req, res) => {
             }
         }
         
-        // Idempotency: clean up any existing elo_history for this tournament
-        const existingHistory = await sql`
-            SELECT player_id, delta FROM elo_history
-            WHERE event_id = ${tournamentId} AND type = 'tournament' AND workspace_id = ${req.workspaceId}
-        `;
-        if (existingHistory.length > 0) {
-            logger.warn("Found existing elo_history for tournament, reverting before re-completion", {
-                tournamentId, existingRecords: existingHistory.length
-            });
-            for (const record of existingHistory) {
-                await sql`UPDATE players SET current_elo = current_elo - ${record.delta} WHERE id = ${record.player_id} AND workspace_id = ${req.workspaceId}`;
-            }
-            await sql`DELETE FROM elo_history WHERE event_id = ${tournamentId} AND type = 'tournament' AND workspace_id = ${req.workspaceId}`;
-        }
-
         // Create SINGLE ELO history record per player for the entire tournament
-        for (const [playerId, { oldElo, totalDelta }] of playerEloChanges) {
-            const newElo = oldElo + totalDelta;
+        for (const [playerId, { totalDelta }] of playerEloChanges) {
+            const updateResult = await sql`
+                UPDATE players SET current_elo = current_elo + ${totalDelta} 
+                WHERE id = ${playerId} AND workspace_id = ${req.workspaceId}
+                RETURNING current_elo
+            `;
+            const newGlobalElo = updateResult[0].current_elo;
+            const actualOldElo = newGlobalElo - totalDelta;
+
             await sql`
                 INSERT INTO elo_history (event_id, player_id, elo_before, elo_after, delta, date, type, workspace_id, source_label)
-                VALUES (${tournamentId}, ${playerId}, ${oldElo}, ${newElo}, ${totalDelta}, ${tournamentDate}, 'tournament', ${req.workspaceId}, ${tournament.name})
+                VALUES (${tournamentId}, ${playerId}, ${actualOldElo}, ${newGlobalElo}, ${totalDelta}, ${tournamentDate}, 'tournament', ${req.workspaceId}, ${tournamentName})
             `;
 
-            const currentGlobalElo = (await sql`SELECT current_elo FROM players WHERE id = ${playerId} AND workspace_id = ${req.workspaceId}`)[0].current_elo;
-            const newGlobalElo = currentGlobalElo + totalDelta;
-            await sql`UPDATE players SET current_elo = ${newGlobalElo} WHERE id = ${playerId} AND workspace_id = ${req.workspaceId}`;
-            logger.eloChange(playerId, currentGlobalElo, newGlobalElo, totalDelta, 'tournament (global update)');
+            logger.eloChange(playerId, actualOldElo, newGlobalElo, totalDelta, 'tournament (global update)');
         }
         
         logger.tournament("complete", tournamentId, { updatedPlayers: playerEloChanges.size, status: "success" });

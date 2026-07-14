@@ -124,8 +124,8 @@ const HIGDemoPage: React.FC = () => {
         leadingAction={{ label: 'Cancel', onPress: () => setIsSheetOpen(false) }}
         trailingAction={{ label: 'Done', onPress: () => setIsSheetOpen(false), bold: true }}
       >
-        <div className="p-4">
-          <p className="sf-body text-ios-label mb-4">This is a native-feeling bottom sheet.</p>
+        <div className="pt-4 pb-8">
+          <p className="sf-body text-ios-label mb-4 px-4">This is a native-feeling bottom sheet.</p>
           <HIGList>
             <HIGListSection>
               <HIGListRow label="Option 1" accessory="checkmark" onPress={() => {}} />
