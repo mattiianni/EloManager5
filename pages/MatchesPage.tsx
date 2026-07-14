@@ -1492,7 +1492,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
      * Salva le partite di una fase intermedia (semifinali / finali) nel DB
      * senza chiudere il torneo. Usato dal bottone "Salva" presente in ogni step.
      */
-    const savePhaseMatches = async (matchesList: Match[], tId: string) => {
+    const savePhaseMatches = async (matchesList: Match[], tId: string, setMatchesList: (m: Match[]) => void) => {
         const allToSave = matchesList.filter(m => m.sets && m.sets.length > 0 && m.sets.some(s => s.team1 > 0 || s.team2 > 0));
         if (allToSave.length === 0) {
             setShowSaveSuccess(true);
@@ -1505,6 +1505,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
                 await updateTournamentMatches(existing.map(m => ({ matchId: m.id, sets: m.sets, winner: m.winner })), true);
             }
             const temp = allToSave.filter(m => m.id.startsWith('temp-'));
+            const newMatchesList = [...matchesList];
             for (const match of temp) {
                 const res = await fetch('/api/matches', {
                     method: 'POST',
@@ -1520,9 +1521,13 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
                 });
                 if (res.ok) {
                     const savedMatch = await res.json();
-                    match.id = savedMatch.id; // UPDATE LOCAL ID
+                    const index = newMatchesList.findIndex(m => m.id === match.id);
+                    if (index !== -1) {
+                        newMatchesList[index] = { ...newMatchesList[index], id: savedMatch.id };
+                    }
                 }
             }
+            setMatchesList(newMatchesList);
             setShowSaveSuccess(true);
         } catch (e) {
             alert('Errore nel salvataggio. Riprova.');
@@ -2317,7 +2322,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  Annulla
  </Button>
  <Button
- onClick={() => savePhaseMatches(finalsMatches, (finalsFlowTournament || editingTournament)!.id)}
+ onClick={() => savePhaseMatches(finalsMatches, (finalsFlowTournament || editingTournament)!.id, setFinalsMatches)}
  disabled={isSubmitting}
  className="flex-1"
  >
@@ -2389,7 +2394,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  onClick={() => {
  console.log('✅ Procedi cliccato - finalsFlowTournament:', finalsFlowTournament);
  setShowBeatBoxStandingsModal(false);
- // NON azzerare finalsFlowTournament qui!
+ // NON azzerare finalsFlowTournament hir!
  setTimeout(() => {
  if (beatBoxSemifinalMatches.length > 0) {
  setIsInBeatBoxSemifinalsPhase(true);
@@ -2472,7 +2477,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  Indietro
  </Button>
  <Button
- onClick={() => savePhaseMatches(beatBoxSemifinalMatches, finalsFlowTournament!.id)}
+ onClick={() => savePhaseMatches(beatBoxSemifinalMatches, finalsFlowTournament!.id, setBeatBoxSemifinalMatches)}
  disabled={isSubmitting}
  className="flex-1"
  >
@@ -2601,7 +2606,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  Indietro
  </Button>
  <Button 
- onClick={() => savePhaseMatches(beatBoxFinalMatches, finalsFlowTournament!.id)}
+ onClick={() => savePhaseMatches(beatBoxFinalMatches, finalsFlowTournament!.id, setBeatBoxFinalMatches)}
  variant="secondary"
  className="flex-1"
  disabled={isSubmitting}
@@ -2876,7 +2881,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  Indietro
  </Button>
  <Button 
- onClick={() => savePhaseMatches(gironiSemifinalMatches, finalsFlowTournament!.id)}
+ onClick={() => savePhaseMatches(gironiSemifinalMatches, finalsFlowTournament!.id, setGironiSemifinalMatches)}
  variant="secondary"
  className="flex-1"
  disabled={isSubmitting}
@@ -3019,7 +3024,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  Indietro
  </Button>
  <Button
- onClick={() => savePhaseMatches(gironiFinalMatches, finalsFlowTournament!.id)}
+ onClick={() => savePhaseMatches(gironiFinalMatches, finalsFlowTournament!.id, setGironiFinalMatches)}
  disabled={isSubmitting}
  className="flex-1"
  >

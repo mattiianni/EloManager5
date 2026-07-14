@@ -143,7 +143,6 @@ const SF_TO_MATERIAL: Record<string, string> = {
   'arrow.up.right.circle': 'north_east',
   'arrow.down.right.circle': 'south_east',
   'waveform.path.ecg': 'monitor_heart',
-  'medal': 'military_tech',
   'rosette': 'award_star',
 
   // Media controls
@@ -163,8 +162,6 @@ const SF_TO_MATERIAL: Record<string, string> = {
   // Custom & missing mappings
   'chevron.up.chevron.down': 'unfold_more',
   'arrow.down.to.line': 'vertical_align_bottom',
-  'arrow.down.right.circle': 'trending_down',
-  'arrow.up.right.circle': 'trending_up',
   '1.circle': 'looks_one',
   '2.circle': 'looks_two',
   '3.circle': 'looks_3',

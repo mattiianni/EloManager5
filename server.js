@@ -1781,7 +1781,19 @@ app.get('/api/players/search', async (req, res) => {
         const targetSurname = surname.toLowerCase();
         
         for (const p of players) {
-            const surnameSim = stringSimilarity.compareTwoStrings(targetSurname, p.surname.toLowerCase());
+            const targetS = targetSurname.trim();
+            const pS = p.surname.toLowerCase().trim();
+            let surnameSim = 0;
+            
+            if (targetS.length < 2 || pS.length < 2) {
+                surnameSim = targetS === pS ? 1.0 : 0.0;
+            } else {
+                surnameSim = stringSimilarity.compareTwoStrings(targetS, pS);
+                if (surnameSim === 0 && (targetS.length <= 3 || pS.length <= 3)) {
+                    surnameSim = targetS === pS ? 1.0 : (levenshtein(targetS, pS) === 1 ? 0.75 : 0.0);
+                }
+            }
+            
             if (surnameSim >= 0.70) {
                 const nameSim = stringSimilarity.compareTwoStrings(name.toLowerCase(), p.name.toLowerCase());
                 candidates.push({
@@ -3332,7 +3344,7 @@ app.put('/api/team-tournaments/:tournamentId/teams/:teamId', async (req, res) =>
         await sql`
             UPDATE team_tournament_teams
             SET name = ${name.trim()},
-                players = ${JSON.stringify(normalizedPlayers)}::jsonb,
+                players = ${JSON.stringify(linkedPlayers)}::jsonb,
                 players_linked = ${JSON.stringify(linkedPlayers)}::jsonb,
                 is_seeded = ${normalizedIsSeeded},
                 updated_at = NOW()

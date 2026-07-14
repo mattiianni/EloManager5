@@ -684,7 +684,7 @@ const StatistichePage: React.FC = () => {
             return { player: s, vittorieGiornate: wonMatchdays };
         }).filter(m => m.vittorieGiornate > 0).sort((a, b) => b.vittorieGiornate - a.vittorieGiornate).slice(0, 3);
 
-        const defaultPlayer = rows[0] || { name: 'N/A', surname: '' };
+        const defaultPlayer = rows[0] || { id: '0', name: 'N/A', surname: '', currentElo: 0, initialElo: 0, position: 'Dx' } as any;
         if (maggiorGuadagnoElo.length === 0) maggiorGuadagnoElo = [{ player: defaultPlayer, guadagno: 0, data: '-' }];
         if (peggiorPerditaElo.length === 0) peggiorPerditaElo = [{ player: defaultPlayer, perdita: 0, data: '-' }];
         if (mvp.length === 0) mvp = [{ player: defaultPlayer, vittorieGiornate: 0 }];
@@ -1491,7 +1491,7 @@ const StatistichePage: React.FC = () => {
                         {completedTournaments.length > 0 && (
                             <optgroup label="Altri tornei">
                                 {completedTournaments.map(tournament => (
-                                    <option key={`series:${(tournament.giornataName || tournament.id)}`} value={`series:${(tournament.giornataName || tournament.id)}`}>
+                                    <option key={`series:${(tournament.giornataName || tournament.name)}`} value={`series:${(tournament.giornataName || tournament.name)}`}>
                                         {tournament.giornataName || tournament.name}
                                     </option>
                                 ))}

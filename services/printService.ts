@@ -439,6 +439,17 @@ export const printChart = (chartContainerId: string): boolean => {
                 ${chartHtml}
             </div>
             ${svgFixScript}
+            <script>
+                setTimeout(() => {
+                    try {
+                        window.print();
+                        setTimeout(() => window.close(), 100);
+                    } catch (e) {
+                        console.error('Print error:', e);
+                        window.close();
+                    }
+                }, 500);
+            </script>
         </body>
         </html>
     `;
@@ -457,19 +468,7 @@ export const printChart = (chartContainerId: string): boolean => {
             return false;
         }
 
-        printWindow.document.write(fullHtml + `
-            <script>
-                setTimeout(() => {
-                    try {
-                        window.print();
-                        setTimeout(() => window.close(), 100);
-                    } catch (e) {
-                        console.error('Print error:', e);
-                        window.close();
-                    }
-                }, 500);
-            </script>
-        `);
+        printWindow.document.write(fullHtml);
         printWindow.document.close();
         return true;
     } catch (error) {
@@ -680,61 +679,84 @@ export const printRanking = (
     tournaments: Tournament[],
     selectedTournamentId?: string | null,
     presenceThreshold?: number,
-    tournamentGiornate?: string[]
+    tournamentGiornate?: string[],
+    selectedTeamTournamentMatchdayIds?: string[]
 ) => {
-    // Filter ELO history based on selected tournament SERIES (seriesKey = giornataName || name)
-    const filteredEloHistory = selectedTournamentId
-        ? (() => {
-            const tournamentIds = tournaments.filter(t => (t.giornataName || t.name) === selectedTournamentId).map(t => t.id);
-            return eloHistory.filter(entry => tournamentIds.includes(entry.eventId));
-        })()
-        : eloHistory;
-
     // Include ALL players of the selected ranking (even if ELO delta is 0)
     // Players without history will still be shown with '-' details
     const playersForReport = rankingData;
 
     const tableRows = playersForReport.map(player => {
-        const playerHistory = filteredEloHistory
-            .filter(entry => entry.playerId === player.id)
+        let rawPlayerHistory = eloHistory
+            .filter(entry => {
+                if (entry.playerId !== player.id) return false;
+                if (selectedTournamentId) {
+                    const isTeamTournament = tournaments.some(t => t.name === selectedTournamentId && t.type === 'Torneo a Squadre' && !t.teamTournamentRootId);
+                    if (isTeamTournament) {
+                        return selectedTeamTournamentMatchdayIds?.includes(entry.eventId);
+                    }
+                    
+                    const tournamentIds = tournaments
+                        .filter(t => (t.giornataName || t.name) === selectedTournamentId)
+                        .map(t => t.id);
+                    
+                    if (entry.type === 'tournament') {
+                        return tournamentIds.includes(entry.eventId);
+                    }
+                    if (entry.type === 'match') {
+                        const match = matches.find(m => m.id === entry.eventId);
+                        return match && match.tournamentId && tournamentIds.includes(match.tournamentId);
+                    }
+                    return false;
+                }
+                return true;
+            });
+
+        const groupedHistoryMap = new Map<string, any>();
+
+        rawPlayerHistory.forEach(entry => {
+            let description = '';
+            let groupKey = '';
+            const dateStr = new Date(entry.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+            if (entry.type === 'manual') {
+                description = 'Aggiornamento Manuale';
+                groupKey = `manual_${entry.eventId}`;
+            } else if (entry.type === 'team_tournament_matchday') {
+                description = `Giornata Torneo ${entry.sourceLabel || ''}`.trim();
+                groupKey = `team_${entry.eventId}`;
+            } else if (entry.type === 'tournament') {
+                const tournament = tournaments.find(t => t.id === entry.eventId);
+                description = entry.sourceLabel || (tournament ? tournament.name : 'Giornata Torneo');
+                groupKey = `tourn_${entry.eventId}`;
+            } else if (entry.type === 'match') {
+                const match = matches.find(m => m.id === entry.eventId);
+                if (match && match.tournamentId) {
+                    const tournament = tournaments.find(t => t.id === match.tournamentId);
+                    description = entry.sourceLabel || (tournament ? tournament.name : 'Giornata Torneo');
+                    groupKey = `tourn_grouped_${match.tournamentId}_${dateStr}`;
+                } else {
+                    description = 'Partita Amichevole';
+                    groupKey = `friendly_${entry.eventId}`;
+                }
+            }
+
+            if (!groupedHistoryMap.has(groupKey)) {
+                groupedHistoryMap.set(groupKey, { ...entry, description, delta: 0 });
+            }
+            groupedHistoryMap.get(groupKey).delta += entry.delta;
+        });
+
+        const playerHistory = Array.from(groupedHistoryMap.values())
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
         const historyList = playerHistory.length > 0 ? `
             <div style="margin-top: 5px; padding-top: 5px; border-top: 1px solid #f0f0f0;">
                 ${playerHistory.map(entry => {
-                    let description = '';
-                    if (entry.type === 'manual') {
-                        description = 'Manual Update';
-                    } else if (entry.type === 'tournament') {
-                        const tournament = tournaments.find(t => t.id === entry.eventId);
-                        if (tournament) {
-                            // Se è filtrato per torneo, mostra solo il tipo (senza nome torneo)
-                            if (selectedTournamentId) {
-                                // Per Torneo Libero con giornataName, mostra solo il nome specifico
-                                if (tournament.type === 'Torneo Libero' && tournament.giornataName) {
-                                    description = getTournamentDisplayName(tournament, tournaments);
-                                } else {
-                                    description = tournament.type;
-                                }
-                            } else {
-                                // Classifica generale: tipo + nome torneo tra parentesi
-                                // Per Torneo Libero con giornataName, mostra nome specifico + torneo padre
-                                if (tournament.type === 'Torneo Libero' && tournament.giornataName) {
-                                    description = `${getTournamentDisplayName(tournament, tournaments)} (${tournament.giornataName})`;
-                                } else {
-                                    description = `${tournament.type} (${getTournamentDisplayName(tournament, tournaments)})`;
-                                }
-                            }
-                        } else {
-                            description = 'Giornata Torneo';
-                        }
-                    } else {
-                        description = 'Partita Amichevole';
-                    }
                     const deltaSign = entry.delta >= 0 ? '+' : '';
                     return `<div style="font-size: 8px; padding: 2px 0; display: flex; justify-content: space-between;">
                                 <span>
-                                    <span style="color: #777;">${description} il ${new Date(entry.date).toLocaleDateString()}:</span>
+                                    <span style="color: #777;">${entry.description} il ${new Date(entry.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })}:</span>
                                 </span>
                                 <strong style="white-space: nowrap; padding-left: 10px;" class="${entry.delta >= 0 ? 'delta-positive' : 'delta-negative'}">
                                     ${deltaSign}${entry.delta.toFixed(2)}
@@ -759,7 +781,9 @@ export const printRanking = (
                 <td style="vertical-align: top; text-align: center;">${player.winPercentage.toFixed(1)}%</td>
             </tr>
         `;
-    }).join('');
+    });
+
+    const tableRowsStr = playerRowsArr.join('');
 
     // Get tournament info if filtered (by SERIES KEY)
     const selectedTournament = selectedTournamentId 
@@ -786,7 +810,7 @@ export const printRanking = (
                 </tr>
             `;
         }
-        tableRowsWithSeparator += tableRows.split('</tr>')[idx] + '</tr>';
+        tableRowsWithSeparator += playerRowsArr[idx];
     });
 
     const content = `
@@ -911,7 +935,7 @@ export const printRanking = (
                 </tr>
             </thead>
             <tbody>
-                ${tableRowsWithSeparator || tableRows}
+                ${tableRowsWithSeparator || tableRowsStr}
             </tbody>
         </table>
 
@@ -1041,11 +1065,17 @@ export const printTournamentReport = (
     let gironiFinals34Content = '';
     let gironiFinalsContent = '';
     
-    if (isGironiFaseFinale && matches.length >= 4) {
-        // Last 4 matches are: semifinal A, semifinal B, finale 3-4, finalissima
-        const gironiMatches = matches.slice(0, -4);
-        const semifinalMatches = matches.slice(-4, -2);
-        const finalMatches = matches.slice(-2);
+    if (isGironiFaseFinale) {
+        let gironiMatches = matches;
+        let semifinalMatches: Match[] = [];
+        let finalMatches: Match[] = [];
+
+        if (tournament.status === 'completed' && matches.length >= 4) {
+            // Last 4 matches are: semifinal A, semifinal B, finale 3-4, finalissima
+            gironiMatches = matches.slice(0, -4);
+            semifinalMatches = matches.slice(-4, -2);
+            finalMatches = matches.slice(-2);
+        }
         
         // Calculate number of gironi (each girone has 6 matches for 4 teams)
         const numGironi = Math.ceil(gironiMatches.length / 6);
@@ -3376,9 +3406,8 @@ const buildTeamTournamentStatisticsBlocksHtml = (
         })
         .filter((p: any) => p.matchesPlayed > 0)
         .sort((a: any, b: any) => {
-            if (b.winPercentage !== a.winPercentage) return b.winPercentage - a.winPercentage;
-            if (b.matchesPlayed !== a.matchesPlayed) return b.matchesPlayed - a.matchesPlayed;
-            return (b.gamesDiff - a.gamesDiff);
+            if (b.eloVar !== a.eloVar) return b.eloVar - a.eloVar;
+            return b.gamesDiff - a.gamesDiff;
         })
         .slice(0, 5);
 

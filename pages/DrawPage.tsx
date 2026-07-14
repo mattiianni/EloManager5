@@ -766,7 +766,12 @@ const DrawPage: React.FC<DrawPageProps> = ({
             }
         }
 
-        processNextSimilarityCheck(queue, editTeamPlayers);
+        try {
+            await processNextSimilarityCheck(queue, editTeamPlayers);
+        } catch (err: any) {
+            setError(err.message || 'Errore durante la verifica omonimia. Riprova.');
+            setIsSavingTeamTournamentTeam(false);
+        }
     };
 
     const executeSaveTeamTournamentTeam = async (finalPlayers?: typeof editTeamPlayers) => {
