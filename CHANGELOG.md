@@ -1,9 +1,13 @@
+## v5.0.6
+- Risolto crash in /api/tournaments/complete
+- Gestito il rendering degli accoppiamenti null in MatchesList
+- Aggiornati i loghi Header per Dark e Light Mode
+- Classifiche: raggruppamento delle vecchie partite singole e fix nomenclatura tornei a squadre
+
 ## v5.0.5
 - Statistiche: Risolto bug fatale ("Attempted to assign to readonly property") nel calcolo delle serie di vittorie consecutive.
 - Statistiche: Aggiunte le statistiche avanzate (Upsets, Maggior Guadagno/Perdita Elo, Forma, Clutch Performance, Difesa Ferrea, MVP) anche per i Tornei a Squadre.
 - UI: Completato il refactoring visivo della pagina Statistiche nei tornei a squadre, impiegando i nuovi componenti standardizzati `StatCard`.
-
-
 - Beat the Box: Implementata l'opzione "Solo Finali" o "Semifinali + Finali" per i tornei a 6 e 8 coppie.
 - Beat the Box: Aggiunta logica di accoppiamento meritocratico per le semifinali, evitando l'incrocio tra squadre dello stesso girone.
 - Beat the Box: Risolto un bug nella partita di consolazione per 3 box, garantendo matematicamente che i giocatori dello stesso girone non giochino mai insieme.
@@ -13,6 +17,12 @@
 - Apple HIG UI Polish: migliorati i margini dei fogli modali (HIGSheet) e la gestione del wrapping testuale nei pulsanti nativi (HIGButton) per un'estetica premium su dispositivi mobile.
 
 ## v5.0.2
+- Mostrati i punteggi per singolo set anziché il totale games in Dashboard e Profilo Giocatore
+- Aggiunta validazione (minimo 2 lettere per nome e cognome) in creazione e modifica giocatore
+- Rimossi giocatori senza nome dal database di produzione
+- Fixati dettagli minori nella visualizzazione dei tabelloni
+
+## v5.0.3
 - Mostrati i punteggi per singolo set anziché il totale games in Dashboard e Profilo Giocatore
 - Aggiunta validazione (minimo 2 lettere per nome e cognome) in creazione e modifica giocatore
 - Rimossi giocatori senza nome dal database di produzione
