@@ -37,12 +37,12 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, theme, toggleTheme }) =>
                  {/* Mobile Title (Hidden on Desktop) */}
                  <div className="flex flex-col items-start overflow-hidden md:hidden min-w-0">
                      <img 
-                         src="/elomanager.png" 
+                         src="/elomanager_w.png" 
                          alt="Padel Elo Manager" 
                          className="h-[34px] w-auto object-contain block dark:hidden" 
                      />
                      <img 
-                         src="/elomanager_w.png" 
+                         src="/elomanager.png" 
                          alt="Padel Elo Manager" 
                          className="h-[34px] w-auto object-contain hidden dark:block" 
                      />
@@ -55,12 +55,12 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, theme, toggleTheme }) =>
              {/* Center Title & Subtitle (Hidden on Mobile, Visible on Desktop) */}
              <div className="hidden md:flex flex-[2] flex-col items-center justify-center text-center overflow-hidden px-2">
                  <img 
-                     src="/elomanager.png" 
+                     src="/elomanager_w.png" 
                      alt="Padel Elo Manager" 
                      className="h-10 w-auto object-contain block dark:hidden" 
                  />
                  <img 
-                     src="/elomanager_w.png" 
+                     src="/elomanager.png" 
                      alt="Padel Elo Manager" 
                      className="h-10 w-auto object-contain hidden dark:block" 
                  />

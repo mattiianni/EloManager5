@@ -1,3 +1,6 @@
+## v5.0.7
+- UI: Ripristinata correttamente la visualizzazione del logo chiaro in modalità Dark e logo scuro in modalità Light.
+
 ## v5.0.6
 - Risolto crash in /api/tournaments/complete
 - Gestito il rendering degli accoppiamenti null in MatchesList
