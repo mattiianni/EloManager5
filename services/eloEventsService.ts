@@ -62,8 +62,14 @@ export function resolveEventContext(
     } else if (entry.type === 'tournament') {
         const tournament = tournaments.find(t => t.id === entry.eventId);
         if (tournament) {
-            parentTournamentName = tournament.parentTournamentName || tournament.giornataName || null;
-            dayLabel = tournament.dayLabel || tournament.name;
+            const isSingleOrCoppie = tournament.type !== 'Torneo a Squadre' && tournament.type !== 'Torneo a Squadre' + ''; // Safe string check
+            const hasParent = tournament.parentTournamentName || tournament.giornataName;
+            parentTournamentName = hasParent 
+                ? (tournament.parentTournamentName || tournament.giornataName) 
+                : (isSingleOrCoppie ? tournament.name : null);
+            dayLabel = hasParent 
+                ? (tournament.dayLabel || tournament.name) 
+                : (isSingleOrCoppie ? tournament.type : tournament.name);
             dateOfDay = tournament.date;
         } else {
             dayLabel = entry.sourceLabel || 'Giornata Torneo';
@@ -73,8 +79,14 @@ export function resolveEventContext(
         if (match && match.tournamentId) {
             const tournament = tournaments.find(t => t.id === match.tournamentId);
             if (tournament) {
-                parentTournamentName = tournament.parentTournamentName || tournament.giornataName || null;
-                dayLabel = tournament.dayLabel || tournament.name;
+                const isSingleOrCoppie = tournament.type !== 'Torneo a Squadre';
+                const hasParent = tournament.parentTournamentName || tournament.giornataName;
+                parentTournamentName = hasParent 
+                    ? (tournament.parentTournamentName || tournament.giornataName) 
+                    : (isSingleOrCoppie ? tournament.name : null);
+                dayLabel = hasParent 
+                    ? (tournament.dayLabel || tournament.name) 
+                    : (isSingleOrCoppie ? tournament.type : tournament.name);
                 dateOfDay = tournament.date;
             } else {
                 dayLabel = 'Giornata Torneo';
