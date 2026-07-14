@@ -4,20 +4,30 @@ import 'dotenv/config';
 const sql = neon(process.env.NEON_DATABASE_URL || process.env.DATABASE_URL);
 
 async function run() {
-    try {
-        const row = await sql`
-            SELECT id, name, type, date, giornata_name, parent_tournament_name, day_label 
-            FROM tournaments 
-            WHERE name = 'TorneOtto Inverno 2025' OR giornata_name = 'TorneOtto Inverno 2025' OR parent_tournament_name = 'TorneOtto Inverno 2025'
-            LIMIT 5
-        `;
-        console.log('Sample matching tournaments:');
-        console.log(JSON.stringify(row, null, 2));
-        process.exit(0);
-    } catch (e) {
-        console.error(e);
-        process.exit(1);
+    // Fix: per le giornate con giornata_name valorizzato, day_label deve essere il NAME del record (che è il nome giornata)
+    // Beat the Box -> name="Beat the Box", giornata_name="TorneOtto Inverno 2025" -> day_label deve essere "Beat the Box"
+    // King of the Court -> name="King of the Court" -> day_label deve essere "King of the Court"
+    // Americano -> name="Americano" -> day_label deve essere "Americano"
+    await sql`
+        UPDATE tournaments
+        SET day_label = name
+        WHERE giornata_name IS NOT NULL
+          AND type NOT IN ('Torneo a Squadre')
+    `;
+    console.log('Fixed day_label for giornate with giornata_name');
+
+    // Verify
+    const rows = await sql`
+        SELECT name, type, giornata_name, day_label, date
+        FROM tournaments 
+        ORDER BY date
+    `;
+    console.log('\n=== RISULTATO FINALE ===\n');
+    for (const r of rows) {
+        const d = r.date ? new Date(r.date).toLocaleDateString('it-IT') : '?';
+        console.log(`${(r.name||'').padEnd(26)}| type: ${(r.type||'').padEnd(22)}| day_label: ${r.day_label}  [${d}]`);
     }
+    process.exit(0);
 }
 
-run();
+run().catch(e => { console.error(e); process.exit(1); });

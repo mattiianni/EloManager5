@@ -513,8 +513,11 @@ async function ensureTablesExist() {
         await sql`
             UPDATE tournaments
             SET parent_tournament_name = COALESCE(parent_tournament_name, giornata_name),
-                day_label = COALESCE(day_label, name)
-            WHERE parent_tournament_name IS NULL OR day_label IS NULL
+                day_label = CASE
+                    WHEN giornata_name IS NOT NULL AND type NOT IN ('Torneo a Squadre') THEN name
+                    WHEN giornata_name IS NULL AND type NOT IN ('Torneo a Squadre') THEN type
+                    ELSE COALESCE(giornata_name, name)
+                END
         `;
         logger.info('Tournaments backfill migration successfully executed');
     } catch (error) {
