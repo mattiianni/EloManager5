@@ -63,13 +63,25 @@ export function resolveEventContext(
         const tournament = tournaments.find(t => t.id === entry.eventId);
         if (tournament) {
             const isSingleOrCoppie = tournament.type !== 'Torneo a Squadre';
-            // Nome Torneo Padre: parentTournamentName → giornataName → name
             parentTournamentName = tournament.parentTournamentName || tournament.giornataName || (isSingleOrCoppie ? tournament.name : null);
-            // Nome Giornata: giornataName → type (MAI dayLabel che contiene il nome torneo)
             dayLabel = tournament.giornataName || tournament.type;
             dateOfDay = tournament.date;
         } else {
-            dayLabel = entry.sourceLabel || 'Giornata Torneo';
+            // Torneo non trovato per ID (elo_history orfana) → cerca per data
+            const entryDate = new Date(entry.date).toISOString().split('T')[0];
+            const byDate = tournaments.find(t =>
+                new Date(t.date).toISOString().split('T')[0] === entryDate &&
+                t.type !== 'Torneo a Squadre'
+            );
+            if (byDate) {
+                parentTournamentName = byDate.parentTournamentName || byDate.giornataName || byDate.name;
+                dayLabel = byDate.giornataName || byDate.type;
+                dateOfDay = byDate.date;
+            } else {
+                // Ultimo fallback: usa source_label come parentName, senza day label aggiuntivo
+                parentTournamentName = entry.sourceLabel || null;
+                dayLabel = entry.sourceLabel || 'Giornata Torneo';
+            }
         }
     } else if (entry.type === 'match') {
         const match = matches.find(m => m.id === entry.eventId);
