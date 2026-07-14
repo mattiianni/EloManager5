@@ -1,3 +1,10 @@
+## v5.0.9
+- Fix: Nelle classifiche (Storico ELO), le etichette delle giornate mostrano ora correttamente il tipo di giornata (es. "Beat the Box", "Americano", "Round Robin + Finali") invece del nome del torneo padre (es. "TorneOtto Inverno 2025").
+- Fix: Risolto bug critico su voci elo_history "orfane" (event_id non corrisponde a nessun torneo nel DB) tramite ricerca per data per recuperare il tipo di giornata corretto.
+- Fix: Aggiornato il backfill del campo day_label nel DB: ora usa il campo type (nome giornata) invece del name (nome torneo padre).
+- Fix: Rimosso visualizzazione del nome torneo padre concatenato all'etichetta ("TorneOtto Inverno 2025 · Beat the Box") — ora si vede solo il nome giornata.
+- Fix: Aggiunto parentTournamentName e dayLabel all'interfaccia TypeScript Tournament.
+
 ## v5.0.8
 - Fix: Nelle classifiche filtrate per torneo, le variazioni ELO erano assenti per i tornei singoli a causa di un'errata associazione degli ID partita; ora viene mostrata la variazione corretta e viene raggruppata l'intera giornata.
 - Fix: Risolto un bug critico che bloccava la stampa PDF delle classifiche.
