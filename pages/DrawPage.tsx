@@ -155,6 +155,7 @@ const DrawPage: React.FC<DrawPageProps> = ({
     // Similarity Check State
     const [similarityCheckQueue, setSimilarityCheckQueue] = useState<{index: number, name: string, surname: string}[]>([]);
     const [currentSimilarityCandidates, setCurrentSimilarityCandidates] = useState<SimilarityResult[]>([]);
+    const [similarityCheckCurrentPlayers, setSimilarityCheckCurrentPlayers] = useState<typeof editTeamPlayers>([]);
     const [isSimilarityModalOpen, setIsSimilarityModalOpen] = useState(false);
     
     const sortedPlayers = [...players].sort((a,b) => a.name.localeCompare(b.name));
@@ -709,10 +710,10 @@ const DrawPage: React.FC<DrawPageProps> = ({
         return false;
     };
 
-    const processNextSimilarityCheck = async (queue: {index: number, name: string, surname: string}[]) => {
+    const processNextSimilarityCheck = async (queue: {index: number, name: string, surname: string}[], currentPlayers: typeof editTeamPlayers) => {
         if (queue.length === 0) {
-            // Queue empty, proceed to save
-            await executeSaveTeamTournamentTeam();
+            // Queue empty, proceed to save with the final players array
+            await executeSaveTeamTournamentTeam(currentPlayers);
             return;
         }
 
@@ -722,10 +723,12 @@ const DrawPage: React.FC<DrawPageProps> = ({
         if (similar.length > 0) {
             setCurrentSimilarityCandidates(similar);
             setSimilarityCheckQueue(queue);
+            // Salva anche lo stato corrente dei giocatori in modo che il modale possa usarlo
+            setSimilarityCheckCurrentPlayers(currentPlayers);
             setIsSimilarityModalOpen(true);
         } else {
             // No similarities for this one, proceed to next
-            processNextSimilarityCheck(queue.slice(1));
+            processNextSimilarityCheck(queue.slice(1), currentPlayers);
         }
     };
 
@@ -763,18 +766,19 @@ const DrawPage: React.FC<DrawPageProps> = ({
             }
         }
 
-        processNextSimilarityCheck(queue);
+        processNextSimilarityCheck(queue, editTeamPlayers);
     };
 
-    const executeSaveTeamTournamentTeam = async () => {
+    const executeSaveTeamTournamentTeam = async (finalPlayers?: typeof editTeamPlayers) => {
         if (!teamTournamentToConfigure || !teamTournamentTeamToEdit) return;
 
         setIsSavingTeamTournamentTeam(true);
         setError(null);
         try {
+            const playersToSave = finalPlayers || editTeamPlayers;
             const updatedTeam = await updateTeamTournamentTeam(teamTournamentToConfigure, teamTournamentTeamToEdit.id, {
                 name: editTeamName.trim(),
-                players: editTeamPlayers,
+                players: playersToSave,
                 isSeeded: editTeamIsSeeded,
             });
 
@@ -2082,25 +2086,22 @@ const DrawPage: React.FC<DrawPageProps> = ({
                 onCreateNew={() => {
                     setIsSimilarityModalOpen(false);
                     // Procedi al prossimo senza collegare ID
-                    processNextSimilarityCheck(similarityCheckQueue.slice(1));
+                    processNextSimilarityCheck(similarityCheckQueue.slice(1), similarityCheckCurrentPlayers);
                 }}
                 onSelect={(selectedPlayer) => {
                     setIsSimilarityModalOpen(false);
-                    // Update the player in the editTeamPlayers array with the existing player's details
                     const currentCheck = similarityCheckQueue[0];
-                    setEditTeamPlayers(prev => {
-                        const newArr = [...prev];
-                        newArr[currentCheck.index] = {
-                            id: selectedPlayer.id,
-                            name: selectedPlayer.name,
-                            surname: selectedPlayer.surname,
-                            currentElo: selectedPlayer.currentElo,
-                        };
-                        return newArr;
-                    });
-                    
-                    // Procedi al prossimo
-                    processNextSimilarityCheck(similarityCheckQueue.slice(1));
+                    const updatedPlayers = [...similarityCheckCurrentPlayers];
+                    updatedPlayers[currentCheck.index] = {
+                        id: selectedPlayer.id,
+                        name: selectedPlayer.name,
+                        surname: selectedPlayer.surname,
+                        currentElo: selectedPlayer.currentElo,
+                    };
+                    // Update UI state so it reflects immediately
+                    setEditTeamPlayers(updatedPlayers);
+                    // Procedi al prossimo passing the updated players array
+                    processNextSimilarityCheck(similarityCheckQueue.slice(1), updatedPlayers);
                 }}
             />
 

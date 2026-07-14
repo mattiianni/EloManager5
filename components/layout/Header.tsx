@@ -24,38 +24,53 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, theme, toggleTheme }) =>
                 borderBottom: '0.5px solid var(--ios-separator)',
             }}
         >
-             {/* Left Action (Sidebar Toggle on Mobile) */}
-             <div className="flex flex-1 justify-start">
+             {/* Left Action & Mobile Title */}
+             <div className="flex flex-[2] md:flex-1 items-center justify-start overflow-hidden gap-1 md:gap-0">
                  <button
                      onClick={toggleSidebar}
-                     className="flex items-center justify-center text-ios-blue md:hidden focus:outline-none w-[44px] h-[44px] -ml-2"
+                     className="flex items-center justify-center text-ios-blue md:hidden focus:outline-none w-[44px] h-[44px] -ml-2 shrink-0"
                      aria-label="Toggle sidebar"
                  >
                      <span className="material-symbols-outlined text-[24px]" style={{ fontVariationSettings: "'wght' 400" }}>menu</span>
                  </button>
-             </div>
-
-             {/* Center Title & Subtitle */}
-             <div className="flex-[2] flex flex-col items-start md:items-center justify-center text-left md:text-center overflow-hidden px-1 md:px-2 ml-1 md:ml-0">
-                 <div className="flex justify-start md:justify-center items-center w-full mb-0.5">
+                 
+                 {/* Mobile Title (Hidden on Desktop) */}
+                 <div className="flex flex-col items-start overflow-hidden md:hidden min-w-0">
                      <img 
                          src="/elomanager_w.png" 
                          alt="Padel Elo Manager" 
-                         className="h-7 md:h-10 w-auto max-w-[150px] md:max-w-none object-contain block dark:hidden" 
+                         className="h-[34px] w-auto object-contain block dark:hidden" 
                      />
                      <img 
                          src="/elomanager.png" 
                          alt="Padel Elo Manager" 
-                         className="h-7 md:h-10 w-auto max-w-[150px] md:max-w-none object-contain hidden dark:block" 
+                         className="h-[34px] w-auto object-contain hidden dark:block" 
                      />
+                     <div className="sf-caption2 text-ios-label-secondary truncate w-full mt-0.5 text-left" style={{ fontSize: '11px', lineHeight: '13px' }}>
+                         v{APP_VERSION} / {APP_MONTH}{workspace ? ` • ${workspace.name}` : ''}
+                     </div>
                  </div>
-                 <div className="sf-caption2 text-ios-label-secondary truncate w-full mt-0.5 text-left md:text-center" style={{ fontSize: '11px', lineHeight: '13px' }}>
+             </div>
+
+             {/* Center Title & Subtitle (Hidden on Mobile, Visible on Desktop) */}
+             <div className="hidden md:flex flex-[2] flex-col items-center justify-center text-center overflow-hidden px-2">
+                 <img 
+                     src="/elomanager_w.png" 
+                     alt="Padel Elo Manager" 
+                     className="h-10 w-auto object-contain block dark:hidden" 
+                 />
+                 <img 
+                     src="/elomanager.png" 
+                     alt="Padel Elo Manager" 
+                     className="h-10 w-auto object-contain hidden dark:block" 
+                 />
+                 <div className="sf-caption2 text-ios-label-secondary truncate w-full mt-0.5 text-center" style={{ fontSize: '11px', lineHeight: '13px' }}>
                      v{APP_VERSION} / {APP_MONTH}{workspace ? ` • ${workspace.name}` : ''}
                  </div>
              </div>
 
              {/* Right Actions */}
-             <div className="flex flex-1 justify-end items-center flex-row gap-0 md:gap-3 -mr-2">
+             <div className="flex flex-1 justify-end items-center flex-row gap-0 md:gap-3 -mr-2 shrink-0">
                  <div className="flex items-center justify-center w-[44px] h-[44px] scale-85 origin-center md:scale-100">
                      <ThemeToggle theme={theme} onToggle={toggleTheme} />
                  </div>
