@@ -168,7 +168,7 @@ export function buildPlayerEloTimeline(
  */
 export function formatLabel(event: EloVariationEvent, isGeneralView: boolean): string {
     if (event.isTeamTournament) {
-        return `Giornata (${event.parentTournamentName || 'Torneo a Squadre'}) del ${formatDateIt(event.date)}`;
+        return `Giornata ${event.parentTournamentName || 'Torneo a Squadre'} del ${formatDateIt(event.date)}`;
     }
     if (event.parentTournamentName) {
         return isGeneralView
@@ -177,6 +177,9 @@ export function formatLabel(event: EloVariationEvent, isGeneralView: boolean): s
     }
     if (event.dayLabel === 'Aggiornamento Manuale') {
         return 'Aggiornamento Manuale';
+    }
+    if (event.dayLabel && event.dayLabel !== 'Partita Amichevole') {
+        return event.dayLabel;
     }
     return 'Partita Amichevole';
 }

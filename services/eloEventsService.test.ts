@@ -128,7 +128,7 @@ describe('eloEventsService Tests', () => {
         expect(timeline[0].isTeamTournament).toBe(true);
 
         const label = formatLabel(timeline[0], true);
-        expect(label).toBe('Giornata (Torneo a Squadre Inverno 2026) del 10/06/2026');
+        expect(label).toBe('Giornata Torneo a Squadre Inverno 2026 del 10/06/2026');
     });
 
     it('friendly matches should not merge with tournament events and render correctly', () => {
