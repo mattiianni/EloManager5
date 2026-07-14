@@ -62,14 +62,11 @@ export function resolveEventContext(
     } else if (entry.type === 'tournament') {
         const tournament = tournaments.find(t => t.id === entry.eventId);
         if (tournament) {
-            const isSingleOrCoppie = tournament.type !== 'Torneo a Squadre' && tournament.type !== 'Torneo a Squadre' + ''; // Safe string check
-            const hasParent = tournament.parentTournamentName || tournament.giornataName;
-            parentTournamentName = hasParent 
-                ? (tournament.parentTournamentName || tournament.giornataName) 
-                : (isSingleOrCoppie ? tournament.name : null);
-            dayLabel = hasParent 
-                ? (tournament.dayLabel || tournament.name) 
-                : (isSingleOrCoppie ? tournament.type : tournament.name);
+            const isSingleOrCoppie = tournament.type !== 'Torneo a Squadre';
+            // Nome Torneo Padre: parentTournamentName → giornataName → name
+            parentTournamentName = tournament.parentTournamentName || tournament.giornataName || (isSingleOrCoppie ? tournament.name : null);
+            // Nome Giornata: giornataName → type (MAI dayLabel che contiene il nome torneo)
+            dayLabel = tournament.giornataName || tournament.type;
             dateOfDay = tournament.date;
         } else {
             dayLabel = entry.sourceLabel || 'Giornata Torneo';
@@ -80,13 +77,10 @@ export function resolveEventContext(
             const tournament = tournaments.find(t => t.id === match.tournamentId);
             if (tournament) {
                 const isSingleOrCoppie = tournament.type !== 'Torneo a Squadre';
-                const hasParent = tournament.parentTournamentName || tournament.giornataName;
-                parentTournamentName = hasParent 
-                    ? (tournament.parentTournamentName || tournament.giornataName) 
-                    : (isSingleOrCoppie ? tournament.name : null);
-                dayLabel = hasParent 
-                    ? (tournament.dayLabel || tournament.name) 
-                    : (isSingleOrCoppie ? tournament.type : tournament.name);
+                // Nome Torneo Padre: parentTournamentName → giornataName → name
+                parentTournamentName = tournament.parentTournamentName || tournament.giornataName || (isSingleOrCoppie ? tournament.name : null);
+                // Nome Giornata: giornataName → type (MAI dayLabel)
+                dayLabel = tournament.giornataName || tournament.type;
                 dateOfDay = tournament.date;
             } else {
                 dayLabel = 'Giornata Torneo';

@@ -5,37 +5,40 @@ import { EloHistoryEntry, Match, Tournament, TeamTournamentMatchday, TournamentT
 describe('eloEventsService Tests', () => {
     const playerId = 'player-1';
 
-    // Mock data structures
+    // Mock data structures - struttura REALE del DB:
+    // name = Nome Torneo Padre (es: "TorneOtto Inverno 2025")
+    // type = Nome Giornata (es: "Beat the Box")
+    // giornataName = null nei record vecchi
     const mockTournaments: Tournament[] = [
         {
             id: 't-day-1',
-            name: 'Beat the Box, 10.05.2026',
+            name: 'TorneOtto Inverno 2025',
             type: TournamentType.BeatTheBox,
             date: '2026-05-10T18:00:00Z',
             club: 'Padel Club',
             matchIds: [],
             status: 'completed',
-            giornataName: 'TorneOtto Inverno 2025' // Parent tournament name
+            giornataName: null
         },
         {
             id: 't-day-2',
-            name: 'Beat the Box, 17.05.2026',
+            name: 'TorneOtto Inverno 2025',
             type: TournamentType.BeatTheBox,
             date: '2026-05-17T18:00:00Z',
             club: 'Padel Club',
             matchIds: [],
             status: 'completed',
-            giornataName: 'TorneOtto Inverno 2025' // Parent tournament name
+            giornataName: null
         },
         {
             id: 't-day-3',
-            name: 'Beat the Box, 24.05.2026',
+            name: 'TorneOtto Inverno 2025',
             type: TournamentType.BeatTheBox,
             date: '2026-05-24T18:00:00Z',
             club: 'Padel Club',
             matchIds: [],
             status: 'completed',
-            giornataName: 'TorneOtto Inverno 2025' // Parent tournament name
+            giornataName: null
         },
         {
             id: 'team-root',
@@ -89,7 +92,7 @@ describe('eloEventsService Tests', () => {
         expect(timeline).toHaveLength(1);
         expect(timeline[0].delta).toBe(50);
         expect(timeline[0].parentTournamentName).toBe('TorneOtto Inverno 2025');
-        expect(timeline[0].dayLabel).toBe('Beat the Box, 10.05.2026');
+        expect(timeline[0].dayLabel).toBe('Beat the Box');
     });
 
     it('mother tournament with 3 giornate: general view has 3 events, filtered view matches parent name', () => {
@@ -114,8 +117,8 @@ describe('eloEventsService Tests', () => {
             parentTournamentName: 'TorneOtto Inverno 2025'
         });
         expect(filteredTimeline).toHaveLength(3);
-        expect(formatLabel(filteredTimeline[0], false)).toBe('Beat the Box, 24.05.2026');
-        expect(formatLabel(filteredTimeline[0], true)).toBe('TorneOtto Inverno 2025 · Beat the Box, 24.05.2026');
+        expect(formatLabel(filteredTimeline[0], false)).toBe('Beat the Box');
+        expect(formatLabel(filteredTimeline[0], true)).toBe('TorneOtto Inverno 2025 · Beat the Box');
     });
 
     it('team tournament matchdays format correctly in general and filtered views', () => {
