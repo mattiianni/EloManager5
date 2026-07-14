@@ -3215,7 +3215,8 @@ const buildTeamTournamentStatisticsBlocksHtml = (
     config: TeamTournamentConfig,
     teams: TeamTournamentTeam[],
     matchdays: TeamTournamentMatchday[],
-    isPartial: boolean
+    isPartial: boolean,
+    derivedStats?: any
 ): string => {
     const normalize = (s: string) => (s || '').trim().toLowerCase();
     const playerKey = (p: TeamTournamentPlayerEntry) => `${normalize(p.name)}|${normalize(p.surname)}`;
@@ -3367,13 +3368,13 @@ const buildTeamTournamentStatisticsBlocksHtml = (
 
     const mediaGamesPerPartita = partiteDisputate > 0 ? (gamesDisputati / partiteDisputate) : 0;
 
-    const top5Players = Array.from(playerAggByKey.values())
+    const top5Players = derivedStats ? derivedStats.top5 : Array.from(playerAggByKey.values())
         .map(p => {
             const diff = p.gamesWon - p.gamesLost;
             const pct = p.matchesPlayed > 0 ? Math.round((p.matchesWon / p.matchesPlayed) * 100) : 0;
-            return { ...p, gamesDiff: diff, winPercentage: pct };
+            return { ...p, gamesDiff: diff, winPercentage: pct, eloVar: 0 };
         })
-        .filter(p => p.matchesPlayed > 0)
+        .filter((p: any) => p.matchesPlayed > 0)
         .sort((a: any, b: any) => {
             if (b.winPercentage !== a.winPercentage) return b.winPercentage - a.winPercentage;
             if (b.matchesPlayed !== a.matchesPlayed) return b.matchesPlayed - a.matchesPlayed;
@@ -3381,25 +3382,29 @@ const buildTeamTournamentStatisticsBlocksHtml = (
         })
         .slice(0, 5);
 
-    const playerStandings = Array.from(playerAggByKey.values())
+    const playerStandings = derivedStats && derivedStats.playerRows 
+        ? [...derivedStats.playerRows].sort((a: any, b: any) => {
+            if (b.eloVar !== a.eloVar) return b.eloVar - a.eloVar;
+            return b.gamesDiff - a.gamesDiff;
+        }) 
+        : Array.from(playerAggByKey.values())
         .map(p => {
             const diff = p.gamesWon - p.gamesLost;
             const pct = p.matchesPlayed > 0 ? Math.round((p.matchesWon / p.matchesPlayed) * 100) : 0;
-            return { ...p, gamesDiff: diff, winPercentage: pct };
+            return { ...p, gamesDiff: diff, winPercentage: pct, eloVar: 0 };
         })
-        .filter(p => p.matchesPlayed > 0)
+        .filter((p: any) => p.matchesPlayed > 0)
         .sort((a: any, b: any) => {
-            if (b.winPercentage !== a.winPercentage) return b.winPercentage - a.winPercentage;
-            if (b.matchesPlayed !== a.matchesPlayed) return b.matchesPlayed - a.matchesPlayed;
-            return (b.gamesDiff - a.gamesDiff);
+            if (b.eloVar !== a.eloVar) return b.eloVar - a.eloVar;
+            return b.gamesDiff - a.gamesDiff;
         });
 
-    const mostGamesWon = Array.from(playerAggByKey.values())
+    const mostGamesWon = derivedStats ? derivedStats.mostGamesWon : Array.from(playerAggByKey.values())
         .filter(p => p.gamesWon > 0)
         .sort((a, b) => b.gamesWon - a.gamesWon)
         .slice(0, 3);
 
-    const mostGamesLost = Array.from(playerAggByKey.values())
+    const mostGamesLost = derivedStats ? derivedStats.mostGamesLost : Array.from(playerAggByKey.values())
         .filter(p => p.gamesLost > 0)
         .sort((a, b) => b.gamesLost - a.gamesLost)
         .slice(0, 3);
@@ -3442,6 +3447,33 @@ const buildTeamTournamentStatisticsBlocksHtml = (
             </div>
         </div>
     `;
+
+    const advancedStatsHtml = derivedStats ? `
+        <div class="avoid-break" style="margin: 0 0 22px 0;">
+            <h3 style="font-size: 13px; font-weight: 900; margin: 0 0 10px 0; padding: 7px 10px; background: #9333ea; color: #ffffff; border-radius: 8px;">
+                Statistiche Avanzate
+            </h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                ${smallListCard('Miglior Guadagno ELO', derivedStats.maggiorGuadagnoElo.map((m: any) => ({ label: `${m.player.name} ${m.player.surname}`, value: `+${m.guadagno.toFixed(2)}` })))}
+                ${smallListCard('Peggior Perdita ELO', derivedStats.peggiorPerditaElo.map((m: any) => ({ label: `${m.player.name} ${m.player.surname}`, value: `-${m.perdita.toFixed(2)}` })))}
+                ${smallListCard('MVP Giocatori', derivedStats.mvp.slice(0, 3).map((m: any) => ({ label: `${m.player.name} ${m.player.surname}`, value: `${m.vittorieGiornate} vittorie` })))}
+                ${smallListCard('Miglior Difesa', derivedStats.difesaFerrea.slice(0, 3).map((d: any) => ({ label: `${d.player.name} ${d.player.surname}`, value: `${d.ratio ? d.ratio.toFixed(2) : (d.avgGameDifference ? d.avgGameDifference.toFixed(2) : 0)} ratio` })))}
+            </div>
+            <div style="margin-top: 16px;">
+                <h4 style="font-size: 11px; font-weight: 900; color: #4b5563; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.05em;">Stato di Forma (Ultime 5)</h4>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                    ${derivedStats.form.map((f: any) => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; border: 1px solid #e5e7eb; border-radius: 4px; padding: 4px 8px; background: #f9fafb;">
+                            <div style="font-size: 9px; font-weight: 800; color: #111; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%;">${f.player.name} ${f.player.surname}</div>
+                            <div style="display: flex; gap: 2px; font-size: 8px;">
+                                ${f.form}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+    ` : '';
 
     return `
         <div class="avoid-break" style="margin: 0 0 22px 0;">
@@ -3502,6 +3534,7 @@ const buildTeamTournamentStatisticsBlocksHtml = (
                             <th style="background: #1e3a6e; color: #fff; border: 1px solid #e5e7eb; text-align:center; font-size: 10px; padding: 6px 6px;">GS</th>
                             <th style="background: #1e3a6e; color: #fff; border: 1px solid #e5e7eb; text-align:center; font-size: 10px; padding: 6px 6px;">Diff</th>
                             <th style="background: #1e3a6e; color: #fff; border: 1px solid #e5e7eb; text-align:center; font-size: 10px; padding: 6px 6px;">%</th>
+                            ${derivedStats ? `<th style="background: #1e3a6e; color: #fff; border: 1px solid #e5e7eb; text-align:center; font-size: 10px; padding: 6px 6px;">Var. ELO</th>` : ''}
                         </tr>
                     </thead>
                     <tbody>
@@ -3515,6 +3548,7 @@ const buildTeamTournamentStatisticsBlocksHtml = (
                                 <td style="text-align:center; font-size: 10px; padding: 3px 6px; border: 1px solid #e5e7eb;">${p.gamesLost}</td>
                                 <td style="text-align:center; font-size: 10px; padding: 3px 6px; border: 1px solid #e5e7eb;">${p.gamesDiff >= 0 ? `+${p.gamesDiff}` : p.gamesDiff}</td>
                                 <td style="text-align:center; font-size: 10px; padding: 3px 6px; border: 1px solid #e5e7eb;">${p.winPercentage}%</td>
+                                ${derivedStats ? `<td style="text-align:center; font-size: 10px; padding: 3px 6px; border: 1px solid #e5e7eb; color: ${p.eloVar > 0 ? '#10b981' : p.eloVar < 0 ? '#ef4444' : '#6b7280'}">${p.eloVar > 0 ? `+${p.eloVar.toFixed(2)}` : p.eloVar.toFixed(2)}</td>` : ''}
                             </tr>
                         `).join('')}
                     </tbody>
@@ -3528,6 +3562,8 @@ const buildTeamTournamentStatisticsBlocksHtml = (
             ${smallListCard('Miglior coppia (Win Rate)', bestPairsByWinRate.map(p => ({ label: p.label, value: `${p.winRate.toFixed(0)}% in ${p.played} partite` })))}
             ${smallListCard('Streak - Serie vittorie', topStreak.map(s => ({ label: s.label, value: String(s.best) })))}
         </div>
+
+        ${advancedStatsHtml}
 
         <div class="avoid-break" style="margin: 0 0 0 0;">
             <h3 style="font-size: 12px; font-weight: 900; margin: 0 0 6px 0; padding: 6px 10px; background: #1e3a6e; color: #ffffff; border-radius: 8px;">
@@ -3546,6 +3582,7 @@ const buildTeamTournamentStatisticsBlocksHtml = (
                             <th style="background: #1e3a6e; color: #fff; border: 1px solid #e5e7eb; text-align:center; font-size: 10px; padding: 6px 6px;">GS</th>
                             <th style="background: #1e3a6e; color: #fff; border: 1px solid #e5e7eb; text-align:center; font-size: 10px; padding: 6px 6px;">Diff</th>
                             <th style="background: #1e3a6e; color: #fff; border: 1px solid #e5e7eb; text-align:center; font-size: 10px; padding: 6px 6px;">%</th>
+                            ${derivedStats ? `<th style="background: #1e3a6e; color: #fff; border: 1px solid #e5e7eb; text-align:center; font-size: 10px; padding: 6px 6px;">Var. ELO</th>` : ''}
                         </tr>
                     </thead>
                     <tbody>
@@ -3560,6 +3597,7 @@ const buildTeamTournamentStatisticsBlocksHtml = (
                                 <td style="text-align:center; font-size: 10px; padding: 3px 6px; border: 1px solid #e5e7eb;">${p.gamesLost}</td>
                                 <td style="text-align:center; font-size: 10px; padding: 3px 6px; border: 1px solid #e5e7eb;">${p.gamesDiff >= 0 ? `+${p.gamesDiff}` : p.gamesDiff}</td>
                                 <td style="text-align:center; font-size: 10px; padding: 3px 6px; border: 1px solid #e5e7eb;">${p.winPercentage}%</td>
+                                ${derivedStats ? `<td style="text-align:center; font-size: 10px; padding: 3px 6px; border: 1px solid #e5e7eb; color: ${p.eloVar > 0 ? '#10b981' : p.eloVar < 0 ? '#ef4444' : '#6b7280'}">${p.eloVar > 0 ? `+${p.eloVar.toFixed(2)}` : p.eloVar.toFixed(2)}</td>` : ''}
                             </tr>
                         `).join('')}
                     </tbody>
@@ -3573,14 +3611,15 @@ export const printTeamTournamentStatistics = (
     tournament: Pick<Tournament, 'name' | 'club' | 'type' | 'status'>,
     config: TeamTournamentConfig,
     teams: TeamTournamentTeam[],
-    matchdays: TeamTournamentMatchday[]
+    matchdays: TeamTournamentMatchday[],
+    derivedStats?: any
 ): boolean => {
     if (tournament.type !== TournamentType.TorneoASquadre) {
         alert('Formato torneo non supportato per la stampa a squadre.');
         return false;
     }
 
-    const blocks = buildTeamTournamentStatisticsBlocksHtml(config, teams, matchdays, tournament.status !== 'completed');
+    const blocks = buildTeamTournamentStatisticsBlocksHtml(config, teams, matchdays, tournament.status !== 'completed', derivedStats);
 
     const content = `
         <style>

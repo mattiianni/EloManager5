@@ -324,15 +324,20 @@ const StatistichePage: React.FC = () => {
         };
 
         const statsByPlayer = new Map<string, PStat>();
-        const upsert = (p: { id?: string; name: string; surname: string }) => {
+        const upsert = (p: { id?: string; name: string; surname: string; originalId?: string }) => {
             const key = playerKey(p);
+            let actualId = p.id || (p as any).originalId;
+            if (!actualId) {
+                const found = players.find(dbP => playerKey(dbP) === key);
+                if (found) actualId = found.id;
+            }
             const existing = statsByPlayer.get(key);
             if (existing) {
-                if (p.id && !existing.id) existing.id = p.id;
+                if (actualId && !existing.id) existing.id = actualId;
                 return existing;
             }
             const created: PStat = {
-                id: p.id,
+                id: actualId,
                 name: p.name,
                 surname: p.surname,
                 matchesPlayed: 0,
@@ -435,6 +440,9 @@ const StatistichePage: React.FC = () => {
             }
             
             return { ...s, gamesDiff: diff, winPercentage: winPct, eloVar };
+        }).sort((a, b) => {
+            if (b.eloVar !== a.eloVar) return b.eloVar - a.eloVar;
+            return b.gamesDiff - a.gamesDiff;
         });
 
         const mediaGamesPerPartita = partiteDisputate > 0 ? (gamesDisputati / partiteDisputate) : 0;
@@ -442,9 +450,8 @@ const StatistichePage: React.FC = () => {
         const top5 = [...rows]
             .filter(r => r.matchesPlayed > 0)
             .sort((a, b) => {
-                if (b.winPercentage !== a.winPercentage) return b.winPercentage - a.winPercentage;
-                if (b.matchesPlayed !== a.matchesPlayed) return b.matchesPlayed - a.matchesPlayed;
-                return (b.gamesDiff - a.gamesDiff);
+                if (b.eloVar !== a.eloVar) return b.eloVar - a.eloVar;
+                return b.gamesDiff - a.gamesDiff;
             })
             .slice(0, 5);
 
@@ -584,8 +591,8 @@ const StatistichePage: React.FC = () => {
             const playerMatches: { won: boolean }[] = [];
             chronological.forEach(md => {
                 (md.subMatches || []).filter(sm => !sm.cancelled).forEach(sm => {
-                    const isT1 = (sm.team1Players || []).some(p => p.id === s.id);
-                    const isT2 = (sm.team2Players || []).some(p => p.id === s.id);
+                    const isT1 = (sm.team1Players || []).some(p => playerKey(p) === playerKey(s));
+                    const isT2 = (sm.team2Players || []).some(p => playerKey(p) === playerKey(s));
                     if (!isT1 && !isT2) return;
                     if (isBlankSets(sm.sets as any)) return;
                     
@@ -613,8 +620,8 @@ const StatistichePage: React.FC = () => {
             const playerMatches: { won: boolean, diff: number }[] = [];
             chronological.forEach(md => {
                 (md.subMatches || []).filter(sm => !sm.cancelled).forEach(sm => {
-                    const isT1 = (sm.team1Players || []).some(p => p.id === s.id);
-                    const isT2 = (sm.team2Players || []).some(p => p.id === s.id);
+                    const isT1 = (sm.team1Players || []).some(p => playerKey(p) === playerKey(s));
+                    const isT2 = (sm.team2Players || []).some(p => playerKey(p) === playerKey(s));
                     if (!isT1 && !isT2) return;
                     if (isBlankSets(sm.sets as any)) return;
                     
@@ -638,8 +645,8 @@ const StatistichePage: React.FC = () => {
             let wins = 0;
             chronological.forEach(md => {
                 (md.subMatches || []).filter(sm => !sm.cancelled).forEach(sm => {
-                    const isT1 = (sm.team1Players || []).some(p => p.id === s.id);
-                    const isT2 = (sm.team2Players || []).some(p => p.id === s.id);
+                    const isT1 = (sm.team1Players || []).some(p => playerKey(p) === playerKey(s));
+                    const isT2 = (sm.team2Players || []).some(p => playerKey(p) === playerKey(s));
                     if (!isT1 && !isT2) return;
                     if (isBlankSets(sm.sets as any)) return;
                     const t1Games = (sm.sets || []).reduce((sum: number, set: any) => sum + Number(set.team1 || 0), 0);
@@ -660,8 +667,8 @@ const StatistichePage: React.FC = () => {
             chronological.forEach(md => {
                 let mdDiff = 0;
                 (md.subMatches || []).filter(sm => !sm.cancelled).forEach(sm => {
-                    const isT1 = (sm.team1Players || []).some(p => p.id === s.id);
-                    const isT2 = (sm.team2Players || []).some(p => p.id === s.id);
+                    const isT1 = (sm.team1Players || []).some(p => playerKey(p) === playerKey(s));
+                    const isT2 = (sm.team2Players || []).some(p => playerKey(p) === playerKey(s));
                     if (isT1) {
                         const t1Games = (sm.sets || []).reduce((sum: number, set: any) => sum + Number(set.team1 || 0), 0);
                         const t2Games = (sm.sets || []).reduce((sum: number, set: any) => sum + Number(set.team2 || 0), 0);
@@ -940,7 +947,11 @@ const StatistichePage: React.FC = () => {
                 // Use tournament-specific final ELO, not global ELO
                 const aFinalElo = a.eloStart + a.variazioneEloTotale;
                 const bFinalElo = b.eloStart + b.variazioneEloTotale;
-                return bFinalElo - aFinalElo;
+                if (bFinalElo !== aFinalElo) return bFinalElo - aFinalElo;
+                
+                const aGamesDiff = a.gamesWon - a.gamesLost;
+                const bGamesDiff = b.gamesWon - b.gamesLost;
+                return bGamesDiff - aGamesDiff;
             })
             .slice(0, 5)
             .map(s => ({
@@ -1480,7 +1491,7 @@ const StatistichePage: React.FC = () => {
                         {completedTournaments.length > 0 && (
                             <optgroup label="Altri tornei">
                                 {completedTournaments.map(tournament => (
-                                    <option key={`series:${(tournament.giornataName || tournament.name)}`} value={`series:${(tournament.giornataName || tournament.name)}`}>
+                                    <option key={`series:${(tournament.giornataName || tournament.id)}`} value={`series:${(tournament.giornataName || tournament.id)}`}>
                                         {tournament.giornataName || tournament.name}
                                     </option>
                                 ))}
@@ -1522,7 +1533,8 @@ const StatistichePage: React.FC = () => {
                                                 { name: root.name, club: root.club, type: TournamentType.TorneoASquadre, status: root.status },
                                                 cfg,
                                                 teams,
-                                                matchdays
+                                                matchdays,
+                                                derived
                                             );
                                         }}
                                         disabled={loading || !root || !cfg}

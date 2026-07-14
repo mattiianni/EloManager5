@@ -135,8 +135,14 @@ const SF_TO_MATERIAL: Record<string, string> = {
   'calendar': 'calendar_today',
   'clock': 'schedule',
 
-  // Awards
   'crown': 'workspace_premium',
+  'crown.fill': 'workspace_premium',
+  'medal': 'military_tech',
+  'bolt.fill': 'bolt',
+  'shield.fill': 'shield',
+  'arrow.up.right.circle': 'north_east',
+  'arrow.down.right.circle': 'south_east',
+  'waveform.path.ecg': 'monitor_heart',
   'medal': 'military_tech',
   'rosette': 'award_star',
 
