@@ -2,6 +2,7 @@ import { RankingEntry, Tournament, TournamentStandingEntry, Match, Player, Tourn
 import { calculateTeamTournamentStandings, TeamTournamentStandingRow } from './teamTournamentService.ts';
 import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
 import { APP_MONTH, APP_VERSION } from '../constants.ts';
+import { buildPlayerEloTimeline, formatLabel } from './eloEventsService.ts';
 
 const getTournamentTypeDisplayName = (type: TournamentType): string => {
     switch (type) {
@@ -680,100 +681,31 @@ export const printRanking = (
     selectedTournamentId?: string | null,
     presenceThreshold?: number,
     tournamentGiornate?: string[],
-    selectedTeamTournamentMatchdayIds?: string[]
+    selectedTeamTournamentMatchdayIds?: string[],
+    teamMatchdays?: TeamTournamentMatchday[]
 ) => {
     // Include ALL players of the selected ranking (even if ELO delta is 0)
     // Players without history will still be shown with '-' details
     const playersForReport = rankingData;
 
     const tableRows = playersForReport.map(player => {
-        let rawPlayerHistory = eloHistory
-            .filter(entry => {
-                if (entry.playerId !== player.id) return false;
-                if (selectedTournamentId) {
-                    const isTeamTournament = tournaments.some(t => t.name === selectedTournamentId && t.type === 'Torneo a Squadre' && !t.teamTournamentRootId);
-                    if (isTeamTournament) {
-                        return selectedTeamTournamentMatchdayIds?.includes(entry.eventId);
-                    }
-                    const normSelected = selectedTournamentId.trim().toLowerCase();
-                    const tournamentIds = tournaments
-                        .filter(t => 
-                            (t.giornataName && t.giornataName.trim().toLowerCase() === normSelected) || 
-                            (t.name && t.name.trim().toLowerCase() === normSelected)
-                        )
-                        .map(t => t.id);
-                    
-                    if (entry.type === 'tournament') {
-                        return tournamentIds.includes(entry.eventId);
-                    }
-                    if (entry.type === 'match') {
-                        const match = matches.find(m => m.id === entry.eventId);
-                        return match && match.tournamentId && tournamentIds.includes(match.tournamentId);
-                    }
-                    return false;
-                }
-                return true;
-            });
-
-        const groupedHistoryMap = new Map<string, any>();
-
-        rawPlayerHistory.forEach(entry => {
-            let description = '';
-            let groupKey = '';
-            const dateStr = new Date(entry.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
-            const getTournDesc = (tournament: any) => {
-                if (!tournament) return 'Giornata Torneo';
-                if (selectedTournamentId) {
-                    return tournament.name;
-                } else {
-                    if (tournament.giornataName) {
-                        return `${tournament.name} (${tournament.giornataName})`;
-                    }
-                    return tournament.name;
-                }
-            };
-
-            if (entry.type === 'manual') {
-                description = 'Aggiornamento Manuale';
-                groupKey = `manual_${entry.eventId}`;
-            } else if (entry.type === 'team_tournament_matchday') {
-                description = entry.sourceLabel && entry.sourceLabel.trim().length > 0
-                    ? entry.sourceLabel.trim()
-                    : 'Giornata Torneo';
-                groupKey = `team_${entry.eventId}`;
-            } else if (entry.type === 'tournament') {
-                const tournament = tournaments.find(t => t.id === entry.eventId);
-                description = getTournDesc(tournament);
-                groupKey = `tourn_${entry.eventId}`;
-            } else if (entry.type === 'match') {
-                const match = matches.find(m => m.id === entry.eventId);
-                if (match && match.tournamentId) {
-                    const tournament = tournaments.find(t => t.id === match.tournamentId);
-                    description = getTournDesc(tournament);
-                    groupKey = `tourn_grouped_${match.tournamentId}_${dateStr}`;
-                } else {
-                    description = 'Partita Amichevole';
-                    groupKey = `friendly_${entry.eventId}`;
-                }
-            }
-
-            if (!groupedHistoryMap.has(groupKey)) {
-                groupedHistoryMap.set(groupKey, { ...entry, description, delta: 0 });
-            }
-            groupedHistoryMap.get(groupKey).delta += entry.delta;
-        });
-
-        const playerHistory = Array.from(groupedHistoryMap.values())
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const playerHistory = buildPlayerEloTimeline(
+            player.id,
+            eloHistory,
+            matches,
+            tournaments,
+            teamMatchdays || [],
+            { parentTournamentName: selectedTournamentId }
+        );
 
         const historyList = playerHistory.length > 0 ? `
             <div style="margin-top: 5px; padding-top: 5px; border-top: 1px solid #f0f0f0;">
                 ${playerHistory.map(entry => {
+                    const labelText = formatLabel(entry, !selectedTournamentId);
                     const deltaSign = entry.delta >= 0 ? '+' : '';
                     return `<div style="font-size: 8px; padding: 2px 0; display: flex; justify-content: space-between;">
                                 <span>
-                                    <span style="color: #777;">${entry.description} il ${new Date(entry.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })}:</span>
+                                    <span style="color: #777;">${labelText} il ${new Date(entry.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })}:</span>
                                 </span>
                                 <strong style="white-space: nowrap; padding-left: 10px;" class="${entry.delta >= 0 ? 'delta-positive' : 'delta-negative'}">
                                     ${deltaSign}${entry.delta.toFixed(2)}
@@ -6563,14 +6495,24 @@ export const printPlayerProfiles = (
 
         const gameWinRate = (gamesWon + gamesLost) > 0 ? (gamesWon / (gamesWon + gamesLost) * 100) : 0;
 
-        // ELO history + per-tournament data
-        const playerHistory = allEloHistory
-            .filter(e => e.playerId === playerId)
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        const lastDelta = playerHistory.length > 0 ? playerHistory[playerHistory.length - 1].delta : 0;
-        const peakElo = playerHistory.length > 0
-            ? Math.max(...playerHistory.map(e => e.eloAfter))
-            : player.currentElo;
+        // ELO history + per-tournament data using central service
+        const timeline = buildPlayerEloTimeline(playerId, allEloHistory, allMatches, allTournaments);
+        const chronologicalTimeline = [...timeline].reverse();
+
+        const lastDelta = timeline.length > 0 ? timeline[0].delta : 0;
+        
+        let currentElo = player.initialElo || 1500;
+        let peakElo = currentElo;
+        const chartPoints: { elo: number; label: string }[] = [{ elo: currentElo, label: 'Start' }];
+
+        chronologicalTimeline.forEach(event => {
+            currentElo += event.delta;
+            peakElo = Math.max(peakElo, currentElo);
+            chartPoints.push({
+                elo: currentElo,
+                label: new Date(event.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })
+            });
+        });
 
         // Per-tournament breakdown
         const completedTournaments = allTournaments
@@ -6589,9 +6531,10 @@ export const printPlayerProfiles = (
                 return (isTeam1 && m.winner === 'team2') || (!isTeam1 && m.winner === 'team1');
             }).length;
             const pct = tMatches.length > 0 ? ((tWins / tMatches.length) * 100).toFixed(0) : '0';
-            // ELO delta for this tournament
-            const tHistory = playerHistory.filter(e => e.eventId === t.id);
-            const delta = tHistory.reduce((sum, e) => sum + e.delta, 0);
+            // ELO delta for this tournament using the timeline
+            const delta = timeline
+                .filter(e => e.parentTournamentName === t.parentTournamentName || e.parentTournamentName === t.giornataName || e.parentTournamentName === t.name)
+                .reduce((sum, e) => sum + e.delta, 0);
             const tDraws = tMatches.length - tWins - tLosses;
             return {
                 date: new Date(t.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' }),
@@ -6604,30 +6547,6 @@ export const printPlayerProfiles = (
                 delta,
             };
         }).filter(Boolean);
-
-        // ELO chart data (cumulative by DATE)
-        const dateDeltaSum = new Map<string, number>();
-        const dateFirstEntry = new Map<string, typeof playerHistory[number]>();
-        
-        playerHistory.forEach(entry => {
-            const dateStr = entry.date.split('T')[0];
-            if (!dateFirstEntry.has(dateStr)) dateFirstEntry.set(dateStr, entry);
-            dateDeltaSum.set(dateStr, (dateDeltaSum.get(dateStr) || 0) + entry.delta);
-        });
-        
-        const orderedDates = [...dateFirstEntry.keys()].sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-        
-        const firstDate = orderedDates[0];
-        const firstEntry = firstDate ? dateFirstEntry.get(firstDate) : undefined;
-        const base = firstEntry ? firstEntry.eloBefore : player.initialElo;
-        const chartPoints: { elo: number; label: string }[] = [{ elo: base, label: 'Start' }];
-        
-        let cumulative = 0;
-        orderedDates.forEach((dateStr, idx) => {
-            cumulative += dateDeltaSum.get(dateStr) || 0;
-            const label = new Date(dateStr).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
-            chartPoints.push({ elo: base + cumulative, label });
-        });
 
         // Partners
         const partnerMap = new Map<string, { total: number; wins: number }>();

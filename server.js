@@ -501,6 +501,26 @@ async function ensureTablesExist() {
         logger.debug('workspace_id columns migration attempt', { message: error.message });
     }
 
+    try {
+        await sql`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS parent_tournament_name VARCHAR(255)`;
+        await sql`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS day_label VARCHAR(255)`;
+    } catch (error) {
+        logger.debug('tournaments parent_tournament_name / day_label column migration attempt', { message: error.message });
+    }
+
+    // One-time backfill migration for existing tournaments
+    try {
+        await sql`
+            UPDATE tournaments
+            SET parent_tournament_name = COALESCE(parent_tournament_name, giornata_name),
+                day_label = COALESCE(day_label, name)
+            WHERE parent_tournament_name IS NULL OR day_label IS NULL
+        `;
+        logger.info('Tournaments backfill migration successfully executed');
+    } catch (error) {
+        logger.debug('Tournaments backfill migration attempt', { message: error.message });
+    }
+
     // Create indexes for workspace scoping
     try {
         await sql`CREATE INDEX IF NOT EXISTS idx_players_workspace ON players(workspace_id)`;
@@ -1565,7 +1585,7 @@ app.get('/api/data', async (req, res) => {
             sql`
                 SELECT 
                     t.id, t.name, t.type, t.date, t.club, t.status, t.americano_fields, t.americano_scoring_type, t.final_standings, t.giornata_name, t.num_gironi,
-                    t.playoff_type, t.team_tournament_root_id,
+                    t.playoff_type, t.team_tournament_root_id, t.parent_tournament_name, t.day_label,
                     c.config_completed AS team_tournament_config_completed,
                     d.round_number AS team_tournament_round_number,
                     d.team1_number AS team_tournament_team1_number,
@@ -1612,6 +1632,8 @@ app.get('/api/data', async (req, res) => {
             americanoScoringType: t.americano_scoring_type,
             finalStandings: t.final_standings || null,
             giornataName: t.giornata_name || null,
+            parentTournamentName: t.parent_tournament_name || null,
+            dayLabel: t.day_label || null,
             numGironi: t.num_gironi || null,
             playoffType: t.playoff_type || null,
             teamTournamentConfigCompleted: !!t.team_tournament_config_completed,
@@ -5279,12 +5301,14 @@ app.post('/api/tournaments/bulk-matches', async (req, res) => {
         }
 
         let tournamentId;
+        const parentTournamentName = tournament.parentTournamentName || tournament.giornataName || null;
+        const dayLabel = tournament.dayLabel || tournament.name;
         
         // ALWAYS create a new tournament entry for each giornata
         // giornataName is used to link multiple giornate to the same tournament series
         const tournamentResult = await sql`
-            INSERT INTO tournaments (name, type, date, club, status, giornata_name, final_standings, americano_fields, americano_scoring_type, num_gironi, playoff_type, workspace_id)
-            VALUES (${tournament.name}, ${tournament.type}, ${tournament.date}, ${tournament.club}, ${tournament.status || 'scheduled'}, ${tournament.giornataName || null}, ${tournament.finalStandings ? JSON.stringify(tournament.finalStandings) : null}, ${tournament.americanoFields || null}, ${tournament.americanoScoringType || null}, ${tournament.numGironi || null}, ${tournament.playoffType || null}, ${req.workspaceId})
+            INSERT INTO tournaments (name, type, date, club, status, giornata_name, parent_tournament_name, day_label, final_standings, americano_fields, americano_scoring_type, num_gironi, playoff_type, workspace_id)
+            VALUES (${tournament.name}, ${tournament.type}, ${tournament.date}, ${tournament.club}, ${tournament.status || 'scheduled'}, ${tournament.giornataName || null}, ${parentTournamentName}, ${dayLabel}, ${tournament.finalStandings ? JSON.stringify(tournament.finalStandings) : null}, ${tournament.americanoFields || null}, ${tournament.americanoScoringType || null}, ${tournament.numGironi || null}, ${tournament.playoffType || null}, ${req.workspaceId})
             RETURNING id
         `;
         tournamentId = tournamentResult[0].id;
