@@ -64,7 +64,13 @@ export function resolveEventContext(
         if (tournament) {
             const isSingleOrCoppie = tournament.type !== 'Torneo a Squadre';
             parentTournamentName = tournament.parentTournamentName || tournament.giornataName || (isSingleOrCoppie ? tournament.name : null);
-            dayLabel = tournament.giornataName || tournament.type;
+            
+            // Se giornataName coincide con il parentTournamentName o con il name del torneo, usiamo type come nome giornata
+            let computedDay = tournament.giornataName || tournament.type;
+            if (isSingleOrCoppie && tournament.giornataName && (tournament.giornataName === tournament.parentTournamentName || tournament.giornataName === tournament.name)) {
+                computedDay = tournament.type;
+            }
+            dayLabel = computedDay;
             dateOfDay = tournament.date;
         } else {
             // Torneo non trovato per ID (elo_history orfana) → cerca per data
@@ -75,7 +81,12 @@ export function resolveEventContext(
             );
             if (byDate) {
                 parentTournamentName = byDate.parentTournamentName || byDate.giornataName || byDate.name;
-                dayLabel = byDate.giornataName || byDate.type;
+                
+                let computedDay = byDate.giornataName || byDate.type;
+                if (byDate.giornataName && (byDate.giornataName === byDate.parentTournamentName || byDate.giornataName === byDate.name)) {
+                    computedDay = byDate.type;
+                }
+                dayLabel = computedDay;
                 dateOfDay = byDate.date;
             } else {
                 // Ultimo fallback: usa source_label come parentName, senza day label aggiuntivo
@@ -89,10 +100,13 @@ export function resolveEventContext(
             const tournament = tournaments.find(t => t.id === match.tournamentId);
             if (tournament) {
                 const isSingleOrCoppie = tournament.type !== 'Torneo a Squadre';
-                // Nome Torneo Padre: parentTournamentName → giornataName → name
                 parentTournamentName = tournament.parentTournamentName || tournament.giornataName || (isSingleOrCoppie ? tournament.name : null);
-                // Nome Giornata: giornataName → type (MAI dayLabel)
-                dayLabel = tournament.giornataName || tournament.type;
+                
+                let computedDay = tournament.giornataName || tournament.type;
+                if (isSingleOrCoppie && tournament.giornataName && (tournament.giornataName === tournament.parentTournamentName || tournament.giornataName === tournament.name)) {
+                    computedDay = tournament.type;
+                }
+                dayLabel = computedDay;
                 dateOfDay = tournament.date;
             } else {
                 dayLabel = 'Giornata Torneo';
