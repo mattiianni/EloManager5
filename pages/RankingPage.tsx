@@ -6,10 +6,10 @@ import { buildPlayerEloTimeline, formatLabel } from '../services/eloEventsServic
 import { printRanking } from '../services/printService.ts';
 import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
 import PlayerProfileModal from '../components/PlayerProfileModal.tsx';
-import { HIGList, HIGListSection, HIGListRow } from '../components/ui/HIGList.tsx';
 import { SFIcon } from '../components/ui/SFIcon.tsx';
 import HIGButton from '../components/ui/HIGButton.tsx';
 import HIGSegmentedControl from '../components/ui/HIGSegmentedControl.tsx';
+import Card from '../components/ui/Card.tsx';
 
 interface RankingPageProps {
     theme: 'light' | 'dark';
@@ -282,10 +282,10 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
     const presenceLabels = ['Tutti', '50%', '60%', '70%', '80%', '90%'];
 
     return (
-        <HIGList className="py-4">
+        <div className="px-0 py-4 space-y-5">
             
             {/* Header / Actions */}
-            <div className="px-3 md:px-4 pt-3 mb-4 flex justify-between items-center">
+            <div className="flex justify-between items-center mb-1">
                 <h2 className="text-[1.62rem] font-black leading-none tracking-tight text-sky-500 dark:text-sky-300 sm:text-[1.78rem] md:text-[2.25rem]">Classifica</h2>
                 <HIGButton 
                     variant="gray"
@@ -307,8 +307,8 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
             </div>
 
             {/* Filters */}
-            <HIGListSection header="Filtri">
-                <div className="px-4 py-2 flex items-center bg-transparent">
+            <Card title="Filtri">
+                <div className="flex items-center bg-transparent">
                     <SFIcon name="trophy.fill" size={18} color="var(--ios-systemOrange)" className="mr-3" />
                     <select
                         value={selectedTournamentId || ''}
@@ -316,7 +316,7 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
                             setSelectedTournamentId(e.target.value || null);
                             setPresenceThreshold(0);
                         }}
-                        className="flex-1 bg-transparent text-ios-label focus:outline-none sf-body appearance-none"
+                        className="flex-1 bg-transparent text-ios-label focus:outline-none sf-body appearance-none font-sans"
                     >
                         <option value="">Generale</option>
                         {completedTournaments.map(tournament => {
@@ -331,11 +331,11 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
                     </select>
                     <SFIcon name="chevron.up.chevron.down" size={14} color="var(--ios-label-tertiary)" />
                 </div>
-            </HIGListSection>
+            </Card>
 
             {selectedTournamentId && tournamentGiornate.length > 1 && (
-                <div className="px-4 mb-6">
-                    <div className="text-xs text-ios-label-secondary uppercase tracking-wider mb-2 font-semibold">
+                <div className="mb-2">
+                    <div className="text-xs text-ios-label-secondary uppercase tracking-wider mb-2 font-semibold px-1">
                         Presenza Minima ({tournamentGiornate.length} giornate)
                     </div>
                     <HIGSegmentedControl 
@@ -347,104 +347,99 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
             )}
 
             {/* Ranking List */}
-            {loading && !players.length ? (
-                <div className="px-4 text-center text-ios-label-secondary">Caricamento...</div>
-            ) : (
-                <HIGListSection 
-                    header="Giocatori"
-                    footer={selectedTournamentId && presenceThreshold > 0 
-                        ? `Giocatori sotto soglia ${presenceThreshold}% elencati in basso.`
-                        : `Totale: ${rankingData.length} giocatori`}
-                >
-                    {(showAllPlayers ? rankingData : rankingData.slice(0, 10)).map((player, idx) => {
-                        const isExpanded = expandedPlayerId === player.id;
-                        
-                        const playerHistory = buildPlayerEloTimeline(
-                            player.id,
-                            eloHistory,
-                            matches,
-                            tournaments,
-                            teamMatchdaysCache,
-                            { parentTournamentName: selectedTournamentId }
-                        );
+            <Card 
+                title={
+                    <div className="flex justify-between items-center w-full">
+                        <span>Giocatori</span>
+                        <span className="text-[12px] text-ios-label-secondary font-normal normal-case">
+                            {selectedTournamentId && presenceThreshold > 0 
+                                ? `Sotto soglia ${presenceThreshold}% in basso`
+                                : `Totale: ${rankingData.length}`}
+                        </span>
+                    </div>
+                }
+            >
+                <div className="divide-y divide-slate-100 dark:divide-white/5">
+                    {loading && !players.length ? (
+                        <div className="py-6 text-center text-ios-label-secondary">Caricamento...</div>
+                    ) : (
+                        (showAllPlayers ? rankingData : rankingData.slice(0, 10)).map((player, idx) => {
+                            const isExpanded = expandedPlayerId === player.id;
+                            
+                            const playerHistory = buildPlayerEloTimeline(
+                                player.id,
+                                eloHistory,
+                                matches,
+                                tournaments,
+                                teamMatchdaysCache,
+                                { parentTournamentName: selectedTournamentId }
+                            );
 
-                        const prevPlayer = idx > 0 ? rankingData[idx - 1] : null;
-                        const showSeparator = selectedTournamentId && presenceThreshold > 0 && 
-                            prevPlayer &&
-                            prevPlayer.presencePercentage >= presenceThreshold &&
-                            player.presencePercentage < presenceThreshold;
+                            const prevPlayer = idx > 0 ? rankingData[idx - 1] : null;
+                            const showSeparator = selectedTournamentId && presenceThreshold > 0 && 
+                                prevPlayer &&
+                                prevPlayer.presencePercentage >= presenceThreshold &&
+                                player.presencePercentage < presenceThreshold;
 
-                        return (
-                            <React.Fragment key={player.id}>
-                                {showSeparator && (
-                                    <div className="px-4 py-2 bg-ios-fill flex items-center justify-center gap-2 border-b border-[var(--ios-separator)]">
-                                        <SFIcon name="arrow.down.to.line" size={14} color="var(--ios-label-secondary)" />
-                                        <span className="text-[11px] font-bold text-ios-label-secondary uppercase tracking-wider">
-                                            Sotto Soglia {presenceThreshold}%
-                                        </span>
-                                    </div>
-                                )}
-                                
-                                <HIGListRow
-                                    label={
-                                        <div className="flex justify-between items-center w-full">
-                                            <span className="truncate pr-2">{`${player.name} ${player.surname}`}</span>
-                                            <div className="flex items-center gap-2 shrink-0">
-                                                <span className="font-semibold text-ios-blue text-[17px]">{player.currentElo.toFixed(2)}</span>
-                                                {getTrendIcon(player.lastDelta)}
-                                            </div>
-                                        </div>
-                                    }
-                                    subtitle={
-                                        <div className="flex items-center justify-between mt-0.5 w-full">
-                                            <span className="text-ios-label-secondary text-[13px]">
-                                                {selectedTournamentId ? `${player.playerGiornateCount}/${tournamentGiornate.length} giornate` : `Posizione #${player.rank}`}
+                            return (
+                                <React.Fragment key={player.id}>
+                                    {showSeparator && (
+                                        <div className="py-2 my-2 bg-ios-fill flex items-center justify-center gap-2 rounded">
+                                            <SFIcon name="arrow.down.to.line" size={12} color="var(--ios-label-secondary)" />
+                                            <span className="text-[11px] font-bold text-ios-label-secondary uppercase tracking-wider">
+                                                Sotto Soglia {presenceThreshold}%
                                             </span>
-                                            <div className="flex items-center gap-3 pr-2">
-                                                <button onClick={(e) => { e.stopPropagation(); setProfilePlayer(player); }} className="text-ios-green" aria-label="Info">
+                                        </div>
+                                    )}
+                                    
+                                    <div className="py-3 first:pt-0 last:pb-0">
+                                        <div className="flex justify-between items-center cursor-pointer" onClick={() => handleToggleExpand(player.id)}>
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                                                    {getMedalIcon(idx)}
+                                                </div>
+                                                <span className="font-medium text-ios-label text-[15px] truncate">{player.name} {player.surname}</span>
+                                            </div>
+                                            <div className="flex items-center gap-3 shrink-0">
+                                                <span className="font-semibold text-ios-blue text-[15px]">{player.currentElo.toFixed(0)}</span>
+                                                {getTrendIcon(player.lastDelta)}
+                                                <button onClick={(e) => { e.stopPropagation(); setProfilePlayer(player); }} className="text-ios-green p-1" aria-label="Info">
                                                     <SFIcon name="info.circle" size={16} />
                                                 </button>
-                                                <button onClick={(e) => { e.stopPropagation(); handleToggleExpand(player.id); }} className="text-ios-label-tertiary">
-                                                    <SFIcon name={isExpanded ? "chevron.up" : "chevron.down"} size={16} />
-                                                </button>
+                                                <SFIcon name={isExpanded ? "chevron.up" : "chevron.down"} size={12} color="var(--ios-label-tertiary)" />
                                             </div>
                                         </div>
-                                    }
-                                    icon={<div className="flex h-full w-full items-center justify-center">{getMedalIcon(idx)}</div>}
-                                    detail={null}
-                                    accessory={null}
-                                />
 
-                                {isExpanded && playerHistory.length > 0 && (
-                                    <div className="bg-ios-fill px-4 py-2 border-b border-[var(--ios-separator)]">
-                                        <div className="text-xs text-ios-label-secondary font-semibold mb-2 uppercase">Storico ELO</div>
-                                        <div className="space-y-1">
-                                            {playerHistory.map(entry => {
-                                                const labelText = formatLabel(entry, !selectedTournamentId);
-                                                const deltaSign = entry.delta >= 0 ? '+' : '';
-                                                return (
-                                                    <div key={entry.key} className="flex justify-between items-center text-[13px]">
-                                                        <div className="text-ios-label">
-                                                            <span>{labelText}</span> 
-                                                            <span className="text-ios-label-secondary ml-1">{new Date(entry.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit'})}</span>
+                                        {isExpanded && playerHistory.length > 0 && (
+                                            <div className="mt-3 bg-ios-fill p-3 rounded-lg space-y-1.5">
+                                                <div className="text-[11px] text-ios-label-secondary font-bold uppercase tracking-wider mb-2">Storico ELO</div>
+                                                {playerHistory.map(entry => {
+                                                    const labelText = formatLabel(entry, !selectedTournamentId);
+                                                    const deltaSign = entry.delta >= 0 ? '+' : '';
+                                                    return (
+                                                        <div key={entry.key} className="flex justify-between items-center text-[13px]">
+                                                            <div className="text-ios-label">
+                                                                <span>{labelText}</span> 
+                                                                <span className="text-ios-label-secondary ml-1">{new Date(entry.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit'})}</span>
+                                                            </div>
+                                                            <div className={`font-mono font-semibold ${entry.delta >= 0 ? 'text-ios-green' : 'text-ios-red'}`}>
+                                                                {deltaSign}{entry.delta.toFixed(1)}
+                                                            </div>
                                                         </div>
-                                                        <div className={`font-mono font-semibold ${entry.delta >= 0 ? 'text-ios-green' : 'text-ios-red'}`}>
-                                                            {deltaSign}{entry.delta.toFixed(1)}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                            </React.Fragment>
-                        );
-                    })}
-                </HIGListSection>
-            )}
+                                </React.Fragment>
+                            );
+                        })
+                    )}
+                </div>
+            </Card>
 
             {!showAllPlayers && rankingData.length > 10 && (
-                <div className="px-4 mt-2">
+                <div className="mt-2">
                     <HIGButton variant="gray" fullWidth onClick={() => setShowAllPlayers(true)}>
                         Mostra tutti i {rankingData.length} giocatori
                     </HIGButton>
@@ -452,15 +447,15 @@ const RankingPage: React.FC<RankingPageProps> = ({ theme }) => {
             )}
 
             {rankingData.length === 0 && !loading && (
-                <div className="px-4 text-center py-8 text-ios-label-secondary">Nessun giocatore in classifica.</div>
+                <div className="text-center py-8 text-ios-label-secondary">Nessun giocatore in classifica.</div>
             )}
 
-            <div className="mt-8">
+            <div className="mt-4">
                 <RankingChart theme={theme} selectedSeriesKey={selectedTournamentId} />
             </div>
 
             <PlayerProfileModal player={profilePlayer} onClose={() => setProfilePlayer(null)} theme={theme} />
-        </HIGList>
+        </div>
     );
 };
 

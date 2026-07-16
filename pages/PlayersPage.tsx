@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { usePadelStore } from '../hooks/usePadelStore.tsx';
 import { Player, FieldPosition } from '../types.ts';
-import { HIGList, HIGListSection, HIGListRow } from '../components/ui/HIGList.tsx';
 import { SFIcon } from '../components/ui/SFIcon.tsx';
 import HIGButton from '../components/ui/HIGButton.tsx';
 import { HIGSheet } from '../components/ui/HIGSheet.tsx';
@@ -10,6 +9,7 @@ import PlayerProfileModal from '../components/PlayerProfileModal.tsx';
 import { printPlayerProfiles } from '../services/printService.ts';
 import PlayerPrintModal from '../components/PlayerPrintModal.tsx';
 import EloPlaytomicInput from '../components/EloPlaytomicInput.tsx';
+import Card from '../components/ui/Card.tsx';
 import { useAuth } from '../hooks/useAuth.tsx';
 import { usePlayerSimilarity, SimilarityResult } from '../hooks/usePlayerSimilarity.ts';
 import PlayerSimilarityModal from '../components/PlayerSimilarityModal.tsx';
@@ -168,10 +168,9 @@ const PlayersPage: React.FC = () => {
     }, [players, sortIndex]);
 
     return (
-        <HIGList className="py-4">
-            
+        <div className="px-0 py-4 space-y-5">
             {/* Header Actions */}
-            <div style={{ padding: '0 16px', marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }} className="sm:flex-row sm:justify-between sm:items-center">
+            <div style={{ padding: '0 0', marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }} className="sm:flex-row sm:justify-between sm:items-center">
                 <HIGSegmentedControl 
                     segments={sortOptions}
                     selectedIndex={sortIndex}
@@ -199,44 +198,37 @@ const PlayersPage: React.FC = () => {
             </div>
 
             {/* Players List */}
-            {loading ? (
-                <div className="px-4 text-center text-ios-label-secondary">Caricamento...</div>
-            ) : (
-                <HIGListSection header={`Roster (${players.length})`}>
-                    {sortedPlayers.length === 0 ? (
-                        <HIGListRow label="Nessun giocatore registrato" />
+            <Card title={`Roster (${players.length})`}>
+                <div className="divide-y divide-slate-100 dark:divide-white/5">
+                    {loading ? (
+                        <div className="py-6 text-center text-ios-label-secondary">Caricamento...</div>
+                    ) : sortedPlayers.length === 0 ? (
+                        <div className="py-6 text-center text-ios-label-secondary">Nessun giocatore registrato</div>
                     ) : (
-                        sortedPlayers.map(player => (
-                            <HIGListRow
-                                key={player.id}
-                                label={
-                                    <div className="flex justify-between items-center w-full">
-                                        <span className="truncate pr-2">{sortIndex === 1 ? `${player.surname} ${player.name}` : `${player.name} ${player.surname}`}</span>
-                                        <span className="font-semibold text-ios-blue text-[17px] shrink-0">{player.currentElo.toFixed(2)}</span>
-                                    </div>
-                                }
-                                subtitle={
-                                    <div className="flex items-center justify-between mt-0.5">
-                                        <span className="text-ios-label-secondary text-[13px]">{player.position}</span>
-                                        <div className="flex items-center gap-3">
-                                            <button onClick={(e) => { e.stopPropagation(); setProfilePlayer(player); }} className="text-ios-green" aria-label="Profilo"><SFIcon name="info.circle" size={16}/></button>
-                                            <button onClick={(e) => { e.stopPropagation(); setPlayerToEdit(player); }} className="text-ios-blue" aria-label="Modifica"><SFIcon name="pencil" size={16}/></button>
-                                            <button onClick={(e) => { e.stopPropagation(); handleDelete(player.id); }} className="text-ios-red" aria-label="Elimina"><SFIcon name="trash" size={16}/></button>
-                                        </div>
-                                    </div>
-                                }
-                                detail={null}
-                                icon={
-                                    <div className="flex h-full w-full items-center justify-center bg-ios-fill text-ios-label">
+                        sortedPlayers.map((player) => (
+                            <div key={player.id} className="flex justify-between items-center py-2.5 first:pt-0 last:pb-0">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-ios-label-secondary shrink-0">
                                         <SFIcon name="person.fill" size={16} />
                                     </div>
-                                }
-                                accessory={null}
-                            />
+                                    <div className="min-w-0">
+                                        <div className="font-semibold text-ios-label text-[15px] truncate">
+                                            {sortIndex === 1 ? `${player.surname} ${player.name}` : `${player.name} ${player.surname}`}
+                                        </div>
+                                        <div className="text-[12px] text-ios-label-secondary mt-0.5">{player.position}</div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3 shrink-0">
+                                    <span className="font-bold text-ios-blue text-[15px]">{player.currentElo.toFixed(0)}</span>
+                                    <button onClick={(e) => { e.stopPropagation(); setProfilePlayer(player); }} className="text-ios-green p-1" aria-label="Profilo"><SFIcon name="info.circle" size={16}/></button>
+                                    <button onClick={(e) => { e.stopPropagation(); setPlayerToEdit(player); }} className="text-ios-blue p-1" aria-label="Modifica"><SFIcon name="pencil" size={16}/></button>
+                                    <button onClick={(e) => { e.stopPropagation(); handleDelete(player.id); }} className="text-ios-red p-1" aria-label="Elimina"><SFIcon name="trash" size={16}/></button>
+                                </div>
+                            </div>
                         ))
                     )}
-                </HIGListSection>
-            )}
+                </div>
+            </Card>
 
             {/* Add Player Sheet */}
             <HIGSheet 
@@ -282,14 +274,14 @@ const PlayersPage: React.FC = () => {
                         </div>
                     </div>
                     
-                    <HIGListSection header="Impostazioni ELO">
+                    <Card title="Impostazioni ELO">
                         <div className="px-4 py-4 border-b" style={{ borderColor: 'var(--ios-separator)' }}>
                             <EloPlaytomicInput
                                 elo={parseFloat(addElo) || 0}
                                 onEloChange={(elo) => setAddElo(elo.toString())}
                             />
                         </div>
-                    </HIGListSection>
+                    </Card>
 
                     <div className="px-4">
                         <HIGButton type="submit" variant="filled" fullWidth disabled={isSubmitting || !name || !surname}>
@@ -355,7 +347,7 @@ const PlayersPage: React.FC = () => {
                         </div>
                     </div>
 
-                    <HIGListSection header="Impostazioni ELO">
+                    <Card title="Impostazioni ELO">
                         <div className="px-4 py-4 border-b" style={{ borderColor: 'var(--ios-separator)' }}>
                             <EloPlaytomicInput
                                 elo={parseFloat(editElo) || 0}
@@ -383,7 +375,7 @@ const PlayersPage: React.FC = () => {
                                 </select>
                             </div>
                         )}
-                    </HIGListSection>
+                    </Card>
 
                     <div className="px-4">
                         <HIGButton type="submit" variant="filled" fullWidth disabled={isSubmitting}>
@@ -421,7 +413,7 @@ const PlayersPage: React.FC = () => {
                     printPlayerProfiles(selectedIds, players, matches, eloHistory, tournaments);
                 }}
             />
-        </HIGList>
+        </div>
     );
 };
 

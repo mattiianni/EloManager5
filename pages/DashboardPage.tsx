@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { usePadelStore } from '../hooks/usePadelStore.tsx';
 import { SFIcon } from '../components/ui/SFIcon.tsx';
-import { HIGListSection, HIGListRow } from '../components/ui/HIGList.tsx';
 import PlayerProfileModal from '../components/PlayerProfileModal.tsx';
 import { Player, TournamentType } from '../types.ts';
 import { groupMatchesByPlayerSets } from '../services/beatTheBoxService.ts';
 import { printPlayerProfiles } from '../services/printService.ts';
 import PlayerPrintModal from '../components/PlayerPrintModal.tsx';
+import Card from '../components/ui/Card.tsx';
 
 interface DashboardPageProps {
     onNavigateToTournaments: (tournamentId: string) => void;
@@ -20,13 +20,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments }
     const stats = useMemo(() => {
         const activePlayers = players.length;
         const totalMatches = matches.length;
-        // "Giornate" = solo le giornate di gioco completate (non i tornei root dei team tournament, non i tornei stand-alone non completati)
-        // Un torneo a squadre root ha teamTournamentRootId === id e non ha giornataName
-        // Una giornata di un torneo a squadre ha teamTournamentRootId !== id
-        // Un torneo normale (TPRA, Americano, ecc.) NON ha teamTournamentRootId
         const completedTournaments = tournaments.filter(t => {
             if (t.status !== 'completed') return false;
-            // Escludi il torneo root dei team tournament (è il "contenitore", non una giornata di gioco)
             if (t.teamTournamentRootId && t.teamTournamentRootId === t.id) return false;
             return true;
         }).length;
@@ -141,41 +136,38 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments }
     ];
 
     return (
-        <div style={{ paddingTop: '8px' }}>
-
-            {/* KPI Grid — stessa inset di HIGListSection (16px) */}
-            <div style={{ margin: '0 16px 20px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-                    {kpiItems.map((kpi, idx) => (
-                        <div key={idx} style={{
-                            background: 'var(--ios-secondarySystemGroupedBackground)',
-                            borderRadius: '10px',
-                            padding: '12px 14px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '4px',
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <SFIcon name={kpi.icon} size={15} color={kpi.color} />
-                                <span style={{
-                                    font: '600 11px/14px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
-                                    color: 'var(--ios-secondaryLabel)',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.04em',
-                                }}>{kpi.label}</span>
-                            </div>
-                            <div style={{
-                                font: '700 24px/28px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
-                                color: 'var(--ios-label)',
-                            }}>{kpi.value}</div>
+        <div className="px-0 py-4 space-y-5">
+            {/* KPI Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                {kpiItems.map((kpi, idx) => (
+                    <div key={idx} style={{
+                        background: 'var(--ios-secondarySystemGroupedBackground)',
+                        borderRadius: '10px',
+                        padding: '12px 14px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px',
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <SFIcon name={kpi.icon} size={15} color={kpi.color} />
+                            <span style={{
+                                font: '600 11px/14px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+                                color: 'var(--ios-secondaryLabel)',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.04em',
+                            }}>{kpi.label}</span>
                         </div>
-                    ))}
-                </div>
+                        <div style={{
+                            font: '700 24px/28px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
+                            color: 'var(--ios-label)',
+                        }}>{kpi.value}</div>
+                    </div>
+                ))}
             </div>
 
             {/* TOP 5 */}
-            <HIGListSection
-                header={
+            <Card
+                title={
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span>Top 5 Giocatori</span>
                         <button
@@ -201,100 +193,81 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments }
                     </div>
                 }
             >
-                {top5.length === 0 ? (
-                    <HIGListRow label="Nessun giocatore registrato" />
-                ) : (
-                    top5.map((p, i) => (
-                        <HIGListRow
-                            key={p.id}
-                            label={`${p.name} ${p.surname}`}
-                            icon={
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
-                                    {getMedalIcon(i)}
-                                </div>
-                            }
-                            detail={
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <span style={{ color: 'var(--ios-systemBlue)', fontWeight: 600, fontSize: '15px' }}>{p.currentElo.toFixed(0)}</span>
-                                    {getTrendIcon(p.lastDelta)}
-                                </div>
-                            }
-                            onPress={() => setProfilePlayer(p)}
-                            accessory="chevron"
-                        />
-                    ))
-                )}
-            </HIGListSection>
-
-            {/* ULTIMA GIORNATA */}
-            <HIGListSection header="Ultima Giornata">
-                {!lastGiornata ? (
-                    <HIGListRow label="Nessuna giornata completata" />
-                ) : (
-                    <>
-                        <HIGListRow
-                            label={lastGiornata.name}
-                            subtitle={`${lastGiornata.type} • ${new Date(lastGiornata.date).toLocaleDateString('it-IT')}`}
-                            icon={
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', background: 'var(--ios-systemOrange)', borderRadius: '6px' }}>
-                                    <SFIcon name="trophy.fill" size={16} color="white" />
-                                </div>
-                            }
-                            onPress={() => onNavigateToTournaments(lastGiornata.id)}
-                            accessory="chevron"
-                        />
-                        {lastGiornata.top3.map((entry, i) => (
-                            <HIGListRow
-                                key={i}
-                                label={entry.label}
-                                icon={
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+                <div className="divide-y divide-slate-100 dark:divide-white/5">
+                    {top5.length === 0 ? (
+                        <div className="py-2 text-center text-ios-label-secondary">Nessun giocatore registrato</div>
+                    ) : (
+                        top5.map((p, i) => (
+                            <div key={p.id} className="flex justify-between items-center py-2.5 cursor-pointer first:pt-0 last:pb-0" onClick={() => setProfilePlayer(p)}>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-6 h-6 flex items-center justify-center shrink-0">
                                         {getMedalIcon(i)}
                                     </div>
-                                }
-                            />
+                                    <span className="font-medium text-ios-label text-[15px]">{p.name} {p.surname}</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className="font-semibold text-ios-blue text-[15px]">{p.currentElo.toFixed(0)}</span>
+                                    {getTrendIcon(p.lastDelta)}
+                                    <SFIcon name="chevron.right" size={12} color="var(--ios-label-tertiary)" />
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </Card>
+
+            {/* ULTIMA GIORNATA */}
+            <Card title="Ultima Giornata">
+                {!lastGiornata ? (
+                    <div className="py-2 text-center text-ios-label-secondary">Nessuna giornata completata</div>
+                ) : (
+                    <div className="divide-y divide-slate-100 dark:divide-white/5">
+                        <div className="flex justify-between items-center py-2.5 cursor-pointer first:pt-0" onClick={() => onNavigateToTournaments(lastGiornata.id)}>
+                            <div className="flex items-center gap-3">
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', background: 'var(--ios-systemOrange)', borderRadius: '6px' }} className="shrink-0">
+                                    <SFIcon name="trophy.fill" size={16} color="white" />
+                                </div>
+                                <div>
+                                    <div className="font-semibold text-[15px]">{lastGiornata.name}</div>
+                                    <div className="text-[12px] text-ios-label-secondary mt-0.5">{lastGiornata.type} • {new Date(lastGiornata.date).toLocaleDateString('it-IT')}</div>
+                                </div>
+                            </div>
+                            <SFIcon name="chevron.right" size={12} color="var(--ios-label-tertiary)" />
+                        </div>
+                        {lastGiornata.top3.map((entry, i) => (
+                            <div key={i} className="flex items-center gap-3 py-2.5 last:pb-0">
+                                <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                                    {getMedalIcon(i)}
+                                </div>
+                                <span className="text-[14px] text-ios-label">{entry.label}</span>
+                            </div>
                         ))}
-                    </>
+                    </div>
                 )}
-            </HIGListSection>
+            </Card>
 
             {/* ULTIME PARTITE */}
-            <HIGListSection header="Ultime Partite">
+            <Card title="Ultime Partite">
                 {recentMatches.length === 0 ? (
-                    <HIGListRow label="Nessuna partita registrata" />
+                    <div className="py-2 text-center text-ios-label-secondary">Nessuna partita registrata</div>
                 ) : (
-                    recentMatches.map((m, i) => (
-                        <HIGListRow
-                            key={i}
-                            label={
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0, fontSize: '15px' }}>
-                                    <span style={{
-                                        color: m.winner === 'team1' ? 'var(--ios-label)' : 'var(--ios-secondaryLabel)',
-                                        fontWeight: m.winner === 'team1' ? 600 : 400,
-                                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-                                    }}>{m.t1}</span>
-                                    <span style={{
-                                        color: m.winner === 'team2' ? 'var(--ios-label)' : 'var(--ios-secondaryLabel)',
-                                        fontWeight: m.winner === 'team2' ? 600 : 400,
-                                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-                                    }}>{m.t2}</span>
+                    <div className="divide-y divide-slate-100 dark:divide-white/5">
+                        {recentMatches.map((m, i) => (
+                            <div key={i} className="flex justify-between items-center py-3 first:pt-0 last:pb-0">
+                                <div className="min-w-0 pr-3">
+                                    <div className={`text-[14px] truncate ${m.winner === 'team1' ? 'font-semibold text-ios-label' : 'text-ios-label-secondary'}`}>{m.t1}</div>
+                                    <div className={`text-[14px] truncate mt-0.5 ${m.winner === 'team2' ? 'font-semibold text-ios-label' : 'text-ios-label-secondary'}`}>{m.t2}</div>
+                                    <div className="text-[11px] text-ios-label-secondary mt-1">{m.date}</div>
                                 </div>
-                            }
-                            subtitle={m.date}
-                            detail={
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'flex-end', fontSize: '15px', fontFamily: 'monospace', fontWeight: 600 }}>
-                                    <span style={{ color: m.winner === 'team1' ? 'var(--ios-label)' : 'var(--ios-secondaryLabel)' }}>
-                                        {m.t1Score}
-                                    </span>
-                                    <span style={{ color: m.winner === 'team2' ? 'var(--ios-label)' : 'var(--ios-secondaryLabel)' }}>
-                                        {m.t2Score}
-                                    </span>
+                                <div className="text-right shrink-0 font-mono text-[14px] font-semibold flex flex-col gap-0.5 leading-none">
+                                    <div className={m.winner === 'team1' ? 'text-ios-label' : 'text-ios-label-secondary'}>{m.t1Score}</div>
+                                    <div className={m.winner === 'team2' ? 'text-ios-label' : 'text-ios-label-secondary'}>{m.t2Score}</div>
                                 </div>
-                            }
-                        />
-                    ))
+                            </div>
+                        ))}
+                    </div>
                 )}
-            </HIGListSection>
+            </Card>
 
             <PlayerProfileModal player={profilePlayer} onClose={() => setProfilePlayer(null)} />
             <PlayerPrintModal

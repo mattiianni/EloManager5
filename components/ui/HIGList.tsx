@@ -25,14 +25,13 @@ interface HIGListSectionProps {
 }
 
 export const HIGListSection: React.FC<HIGListSectionProps> = ({ header, footer, children }) => {
-  // Add separators between rows
   const childrenArray = React.Children.toArray(children);
   const content = childrenArray.map((child, index) => {
     return (
       <React.Fragment key={index}>
         {child}
         {index < childrenArray.length - 1 && (
-          <div style={{ height: '0.5px', background: 'var(--ios-separator)', marginLeft: '16px' }} />
+          <div className="mx-4" style={{ height: '0.5px', background: 'var(--ios-separator)', opacity: 0.5 }} />
         )}
       </React.Fragment>
     );
