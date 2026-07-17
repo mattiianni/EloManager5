@@ -12,6 +12,7 @@ import { HIGSheet } from '../components/ui/HIGSheet';
 import { HIGAlert } from '../components/ui/HIGAlert';
 import { TrashIcon, PrintIcon, PencilIcon, ChevronDownIcon } from '../components/ui/Icons.tsx';
 import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
+import { formatPlayerName } from '../utils/format.ts';
 import TpraBracketView from '../components/TpraBracketView.tsx';
 
 type Page = 'Ranking' | 'Players' | 'Matches' | 'Draw' | 'Tournaments' | 'TeamSummary';
@@ -1452,8 +1453,8 @@ const TournamentsPage: React.FC<TournamentsPageProps> = ({
                                                                     <div className="mt-4 pt-4 border-t border-slate-200/60 dark:border-white/10">
                                                                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                                                                             {tournamentMatches.map((m, idx) => {
-                                                                                const t1Names = m.team1.map(pId => { const p = getPlayerById(pId); return p ? `${p.name} ${p.surname}` : pId; }).join(' / ');
-                                                                                const t2Names = m.team2.map(pId => { const p = getPlayerById(pId); return p ? `${p.name} ${p.surname}` : pId; }).join(' / ');
+                                                                                const t1Names = m.team1.map(pId => { const p = getPlayerById(pId); return p ? formatPlayerName(p) : pId; }).join(' / ');
+                                                                                const t2Names = m.team2.map(pId => { const p = getPlayerById(pId); return p ? formatPlayerName(p) : pId; }).join(' / ');
                                                                                 const t1SetsDisplay = m.sets && m.sets.length > 0 ? (
                                                                                     <div className="flex items-center gap-1.5">
                                                                                         {m.sets.map((s, i) => (

@@ -12,6 +12,7 @@ import { TrashIcon, ChevronDownIcon, PencilIcon, PrintIcon } from '../components
 import { printTournamentReport, printTorneoLiberoComplete, printBeatTheBoxBlank, printBeatTheBoxComplete, printGironiTournament } from '../services/printService.ts';
 import { calculateTournamentStandings, calculateFinalStandingsForRoundRobinFinali } from '../services/tournamentService.ts';
 import { getTournamentDisplayName } from '../utils/tournamentLabels.ts';
+import { formatPlayerName } from '../utils/format.ts';
 import { 
  calculateAllBoxStandings, 
  createFinalsMatches as createBeatBoxFinalsMatches,
@@ -1727,11 +1728,11 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  return (
  <div key={match.id} className="flex items-center justify-between text-sm">
  {court && <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 w-16">{court}</span>}
- <div className={`text-right flex-1 ${match.winner === 'team1' ? 'font-bold text-gray-900 dark:text-white' : 'font-normal text-gray-500 dark:text-gray-400'}`}>{team1[0]?.name} & {team1[1]?.name}</div>
+ <div className={`text-right flex-1 ${match.winner === 'team1' ? 'font-bold text-gray-900 dark:text-white' : 'font-normal text-gray-500 dark:text-gray-400'}`}>{formatPlayerName(team1[0])} & {formatPlayerName(team1[1])}</div>
  <span className={`mx-4 font-bold text-lg ${(!match.sets || match.sets.length === 0 || (match.sets.length === 1 && match.sets[0].team1 === 0 && match.sets[0].team2 === 0)) ? 'text-gray-400' : 'text-sky-500'}`}>
  {(!match.sets || match.sets.length === 0 || (match.sets.length === 1 && match.sets[0].team1 === 0 && match.sets[0].team2 === 0)) ? '0-0' : match.sets.map(s => `${s.team1}-${s.team2}`).join(' ')}
  </span>
- <div className={`text-left flex-1 ${match.winner === 'team2' ? 'font-bold text-gray-900 dark:text-white' : 'font-normal text-gray-500 dark:text-gray-400'}`}>{team2[0]?.name} & {team2[1]?.name}</div>
+ <div className={`text-left flex-1 ${match.winner === 'team2' ? 'font-bold text-gray-900 dark:text-white' : 'font-normal text-gray-500 dark:text-gray-400'}`}>{formatPlayerName(team2[0])} & {formatPlayerName(team2[1])}</div>
  </div>
  );
  })}
@@ -1765,11 +1766,11 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(match.date).toLocaleString()}</p>
  </div>
  <div className="flex items-center justify-between">
- <div className={`text-right flex-1 ${match.winner === 'team1' ? 'font-bold text-gray-900 dark:text-white' : 'font-normal text-gray-500 dark:text-gray-400'}`}>{team1[0].name} & {team1[1].name}</div>
+ <div className={`text-right flex-1 ${match.winner === 'team1' ? 'font-bold text-gray-900 dark:text-white' : 'font-normal text-gray-500 dark:text-gray-400'}`}>{formatPlayerName(team1[0])} & {formatPlayerName(team1[1])}</div>
  <span className="mx-4 font-bold text-2xl text-sky-500">
  {match.sets.map(s => `${s.team1}-${s.team2}`).join(' ')}
  </span>
- <div className={`text-left flex-1 ${match.winner === 'team2' ? 'font-bold text-gray-900 dark:text-white' : 'font-normal text-gray-500 dark:text-gray-400'}`}>{team2[0].name} & {team2[1].name}</div>
+ <div className={`text-left flex-1 ${match.winner === 'team2' ? 'font-bold text-gray-900 dark:text-white' : 'font-normal text-gray-500 dark:text-gray-400'}`}>{formatPlayerName(team2[0])} & {formatPlayerName(team2[1])}</div>
  <Button variant="danger" size="sm" onClick={async () => await deleteMatch(match.id)} className="!p-2 ml-4"><TrashIcon /></Button>
  </div>
  <div className="text-center text-xs text-gray-500 dark:text-gray-400 mt-2">
@@ -1901,7 +1902,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  return (
  <div key={match.id} className="grid grid-cols-3 items-center gap-2 bg-white dark:bg-gray-800 p-3 rounded-lg border">
  <div className="text-right text-sm">
- <p className="font-semibold">{team1[0].name} & {team1[1].name}</p>
+ <p className="font-semibold">{formatPlayerName(team1[0])} & {formatPlayerName(team1[1])}</p>
  <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}</p>
  </div>
  <MatchScoreInput
@@ -1910,7 +1911,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  disabled={isSubmitting}
  />
  <div className="text-sm">
- <p className="font-semibold">{team2[0].name} & {team2[1].name}</p>
+ <p className="font-semibold">{formatPlayerName(team2[0])} & {formatPlayerName(team2[1])}</p>
  <p className="text-xs text-gray-500 dark:text-gray-400">ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}</p>
  </div>
  </div>
@@ -2279,7 +2280,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  }`}
  >
  <div className="text-right text-sm">
- <p className="font-semibold">{team1[0].name} & {team1[1].name}</p>
+ <p className="font-semibold">{formatPlayerName(team1[0])} & {formatPlayerName(team1[1])}</p>
  <p className="text-xs text-gray-500 dark:text-gray-400">
  ELO: {((team1[0].currentElo + team1[1].currentElo)/2).toFixed(2)}
  </p>
@@ -2299,7 +2300,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  </p>
  </div>
  <div className="text-sm">
- <p className="font-semibold">{team2[0].name} & {team2[1].name}</p>
+ <p className="font-semibold">{formatPlayerName(team2[0])} & {formatPlayerName(team2[1])}</p>
  <p className="text-xs text-gray-500 dark:text-gray-400">
  ELO: {((team2[0].currentElo + team2[1].currentElo)/2).toFixed(2)}
  </p>
@@ -2439,7 +2440,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  <h4 className="font-semibold mb-2 text-center">Semifinale {idx + 1}</h4>
  <div className="grid grid-cols-3 items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
  <div className="text-right text-sm">
- <p className="font-semibold">{team1[0].name} & {team1[1].name}</p>
+ <p className="font-semibold">{formatPlayerName(team1[0])} & {formatPlayerName(team1[1])}</p>
  </div>
  <MatchScoreInput
  sets={match.sets || []}
@@ -2457,7 +2458,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  disabled={isSubmitting}
  />
  <div className="text-sm">
- <p className="font-semibold">{team2[0].name} & {team2[1].name}</p>
+ <p className="font-semibold">{formatPlayerName(team2[0])} & {formatPlayerName(team2[1])}</p>
  </div>
  </div>
  </div>
@@ -2564,7 +2565,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  <h4 className="font-semibold mb-2 text-center">{matchTitle}</h4>
  <div className="grid grid-cols-3 items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
  <div className="text-right text-sm">
- <p className="font-semibold">{team1[0].name} & {team1[1].name}</p>
+ <p className="font-semibold">{formatPlayerName(team1[0])} & {formatPlayerName(team1[1])}</p>
  </div>
  <MatchScoreInput
  sets={match.sets || []}
@@ -2582,7 +2583,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ tournamentToOpen, setTourname
  disabled={isSubmitting}
  />
  <div className="text-sm">
- <p className="font-semibold">{team2[0].name} & {team2[1].name}</p>
+ <p className="font-semibold">{formatPlayerName(team2[0])} & {formatPlayerName(team2[1])}</p>
  </div>
  </div>
  </div>
