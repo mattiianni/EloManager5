@@ -8,5 +8,5 @@ export const formatPlayerName = (player?: PlayerNameInput | null): string => {
     const name = (player.name || '').trim();
     const surname = (player.surname || '').trim();
     if (!surname) return name;
-    return `${name} ${surname[0].toUpperCase()}.`;
+    return `${name} ${surname}`;
 };

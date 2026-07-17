@@ -7,6 +7,7 @@ import { groupMatchesByPlayerSets } from '../services/beatTheBoxService.ts';
 import { printPlayerProfiles } from '../services/printService.ts';
 import PlayerPrintModal from '../components/PlayerPrintModal.tsx';
 import Card from '../components/ui/Card.tsx';
+import { formatPlayerName } from '../utils/format.ts';
 
 interface DashboardPageProps {
     onNavigateToTournaments: (tournamentId: string) => void;
@@ -77,7 +78,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments }
                 standings.push({ team: fm.winner === 'team1' ? [...fm.team1] : [...fm.team2] });
             }
             top3 = standings.map(s =>
-                ({ label: s.team.map(id => { const p = getPlayerById(id); return p ? `${p.name} ${p.surname[0]}.` : '?'; }).join(' & ') })
+                ({ label: s.team.map(id => { const p = getPlayerById(id); return p ? formatPlayerName(p) : '?'; }).join(' & ') })
             );
         } else {
             const uniquePlayers = Array.from(new Set(tournamentMatches.flatMap(m => [...m.team1, ...m.team2])));
@@ -88,7 +89,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments }
                         (m.winner === 'team1' && m.team1.includes(id)) ||
                         (m.winner === 'team2' && m.team2.includes(id))
                     ).length;
-                    return { id, name: p ? `${p.name} ${p.surname[0]}.` : '?', wins };
+                    return { id, name: p ? formatPlayerName(p) : '?', wins };
                 })
                 .sort((a, b) => b.wins - a.wins)
                 .slice(0, 3);
@@ -104,8 +105,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToTournaments }
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
             .slice(0, 5);
         return sorted.map(m => {
-            const t1 = m.team1.map(id => { const p = getPlayerById(id); return p ? `${p.name} ${p.surname[0]}.` : '?'; }).join(' & ');
-            const t2 = m.team2.map(id => { const p = getPlayerById(id); return p ? `${p.name} ${p.surname[0]}.` : '?'; }).join(' & ');
+            const t1 = m.team1.map(id => { const p = getPlayerById(id); return p ? formatPlayerName(p) : '?'; }).join(' & ');
+            const t2 = m.team2.map(id => { const p = getPlayerById(id); return p ? formatPlayerName(p) : '?'; }).join(' & ');
             const t1Score = m.sets.map(s => s.team1).join(' ');
             const t2Score = m.sets.map(s => s.team2).join(' ');
             const date = new Date(m.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
